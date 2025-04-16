@@ -1,5 +1,6 @@
 using InstrumentStatic;
 using MarketHelperDict;
+using MarketData;
 
 namespace Broker
 {
@@ -18,7 +19,7 @@ namespace Broker
         /// <summary>
         /// Fetches NFO options for the MarketInfo's IndexTradingSymbol, filtered by expiry >= current date.
         /// </summary>
-        public async Task<(NSEInstrument index, List<NFOInstrument> options, DateTime latestExpiry)> GetIndexOptionsAsync(DateTime? now = null)
+        private async Task<(NSEInstrument index, List<NFOInstrument> options, DateTime latestExpiry)> GetIndexOptionInstrumentsAsync(DateTime? now = null)
         {
             try
             {
@@ -33,6 +34,45 @@ namespace Broker
                 throw new BrokerException(
                     $"Index '{_marketInfo.IndexTradingSymbol}' not found or has no options.", ex);
             }
+        }
+    
+        // New method to generate a MarketData object.
+        public  MarketData.MarketData GenerateMarketData(double rfr, DateTime now, BrokerAuthService brokerAuthService, HttpClient httpClient)
+        {
+            // Input validation for rfr.
+            if (!double.IsFinite(rfr) || rfr <= 0) // corrected validation
+            {
+                throw new ArgumentException("RFR must be a finite and positive number.", nameof(rfr));
+            }
+
+            //  Create RFR object
+            RFR rfrObject = new RFR(rfr);
+
+            // Get NSEInstrument from index.
+            var Instruments = GetIndexOptionInstrumentsAsync(now).Result;
+            NSEInstrument indexInstrument =  Instruments.index;
+            QuoteFetcher quoteFetcherService = new QuoteFetcher(brokerAuthService, httpClient);
+            InstrumentQuote IndexQuote = quoteFetcherService.FetchQuotesAsync(new List<QuoteRequest> { new QuoteRequest( indexInstrument.Exchange, indexInstrument.Token, indexInstrument.TradingSymbol) }).Result.First();
+            //create index object
+            MarketData.Index index = new MarketData.Index(
+                indexInstrument.TradingSymbol,
+                indexInstrument.Token,
+                IndexQuote.Ltp,
+                _marketInfo.NSECalendar,
+                rfrObject,
+                Instruments.latestExpiry,
+                now
+            );
+
+            //get options quotes
+            List<NFOInstrument> options = Instruments.options;
+            List<InstrumentQuote> optionQuotes = quoteFetcherService.FetchQuotesAsync(
+                options.Select(o => new QuoteRequest(o.Exchange, o.Token, o.TradingSymbol)).ToList()
+            ).Result;
+
+            //  Need more information to construct the MarketData object.
+            //  For now, I'll return null.  We'll fill in the details as you provide them.
+            return null;
         }
 
     }

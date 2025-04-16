@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../InstrumentStatic/InstrumentStatic.csproj" />
+    <ProjectReference Include="../MarketData/MarketData.csproj" />
     <ProjectReference Include="../MarketHelperDict/MarketHelperDict.csproj" />
   </ItemGroup>
 

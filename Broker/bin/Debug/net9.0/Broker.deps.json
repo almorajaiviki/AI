@@ -1,0 +1,101 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "Broker/1.0.0": {
+        "dependencies": {
+          "InstrumentStatic": "1.0.0",
+          "MarketData": "1.0.0",
+          "MarketHelperDict": "1.0.0"
+        },
+        "runtime": {
+          "Broker.dll": {}
+        }
+      },
+      "CalendarLib/1.0.0": {
+        "runtime": {
+          "CalendarLib.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "InstrumentStatic/1.0.0": {
+        "runtime": {
+          "InstrumentStatic.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "MarketData/1.0.0": {
+        "dependencies": {
+          "CalendarLib": "1.0.0",
+          "InstrumentStatic": "1.0.0",
+          "QuantitativeAnalytics": "1.0.0"
+        },
+        "runtime": {
+          "MarketData.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "MarketHelperDict/1.0.0": {
+        "dependencies": {
+          "CalendarLib": "1.0.0"
+        },
+        "runtime": {
+          "MarketHelperDict.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "QuantitativeAnalytics/1.0.0": {
+        "runtime": {
+          "QuantitativeAnalytics.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Broker/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "CalendarLib/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "InstrumentStatic/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "MarketData/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "MarketHelperDict/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "QuantitativeAnalytics/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

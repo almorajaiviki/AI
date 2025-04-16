@@ -9,7 +9,11 @@ namespace Broker
         public const string Login = "https://api.shoonya.com/NorenWClientTP/QuickAuth";
         public const string Logout = "https://api.shoonya.com/NorenWClientTP/Logout";
         public const string GetQuotes = "https://api.shoonya.com/get-quotes";
+
+        // WebSocket endpoint for real-time streaming
+        public const string WebSocket = "wss://api.shoonya.com/NorenWSTP/";
     }
+
     public readonly struct AuthRequest
     {
         [JsonPropertyName("uid")]
@@ -198,6 +202,68 @@ namespace Broker
         public override string ToString() => 
             $"{{ \"uid\":\"{uid}\", \"exch\":\"{exch}\", \"token\":\"{token}\" }}";
     }
+    public sealed record ConnectMessage(
+        [property: JsonPropertyName("t")] string Type,
+        [property: JsonPropertyName("uid")] string UserId,
+        [property: JsonPropertyName("actid")] string AccountId,
+        [property: JsonPropertyName("susertoken")] string Token
+    );
+    public sealed record ConnectResponse(
+        [property: JsonPropertyName("t")] string Type,
+        [property: JsonPropertyName("uid")] string UserId,
+        [property: JsonPropertyName("s")] string Status
+    );
+    public sealed record AllResponsesCheck(
+        [property: JsonPropertyName("t")] string Type
+    );
+    public sealed record AlertMessage(
+        [property: JsonPropertyName("t")] string Type,
+        [property: JsonPropertyName("dmsg")] string Message
+    );
+    public sealed record SubscriptionAck(
+        [property: JsonPropertyName("t")] string Type,
+        [property: JsonPropertyName("e")] string Exchange,
+        [property: JsonPropertyName("tk")] string Token,
+        [property: JsonPropertyName("pp")] string PreviousClose,
+        [property: JsonPropertyName("ts")] string Timestamp,
+        [property: JsonPropertyName("ti")] string TickSize,
+        [property: JsonPropertyName("ls")] string LotSize,
+        [property: JsonPropertyName("lp")] string LastPrice,
+        [property: JsonPropertyName("pc")] string PercentChange,
+        [property: JsonPropertyName("v")] string Volume,
+        [property: JsonPropertyName("o")] string Open,
+        [property: JsonPropertyName("h")] string High,
+        [property: JsonPropertyName("l")] string Low,
+        [property: JsonPropertyName("c")] string Close,
+        [property: JsonPropertyName("ap")] string AveragePrice,
+        [property: JsonPropertyName("oi")] string OpenInterest,
+        [property: JsonPropertyName("poi")] string PrevOpenInterest,
+        [property: JsonPropertyName("toi")] string TotalOpenInterest,
+        [property: JsonPropertyName("bq1")] string BidQty,
+        [property: JsonPropertyName("bp1")] string BidPrice,
+        [property: JsonPropertyName("sq1")] string AskQty,
+        [property: JsonPropertyName("sp1")] string AskPrice
+    );
+    public sealed record SubscriptionUpdate(
+        [property: JsonPropertyName("t")] string Type,
+        [property: JsonPropertyName("e")] string Exchange,
+        [property: JsonPropertyName("tk")] string Token,
+        [property: JsonPropertyName("lp")] string LastPrice,
+        [property: JsonPropertyName("pc")] string PercentChange,
+        [property: JsonPropertyName("v")] string Volume,
+        [property: JsonPropertyName("o")] string Open,
+        [property: JsonPropertyName("h")] string High,
+        [property: JsonPropertyName("l")] string Low,
+        [property: JsonPropertyName("c")] string Close,
+        [property: JsonPropertyName("ap")] string AveragePrice,
+        [property: JsonPropertyName("oi")] string OpenInterest,
+        [property: JsonPropertyName("poi")] string PrevOpenInterest,
+        [property: JsonPropertyName("toi")] string TotalOpenInterest,
+        [property: JsonPropertyName("bq1")] string BidQty,
+        [property: JsonPropertyName("bp1")] string BidPrice,
+        [property: JsonPropertyName("sq1")] string AskQty,
+        [property: JsonPropertyName("sp1")] string AskPrice
+    );
 }
 
 
