@@ -1,0 +1,133 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "CalendarLib/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/CalendarLib.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/CalendarLib.dll": {}
+        }
+      },
+      "InstrumentStatic/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/InstrumentStatic.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/InstrumentStatic.dll": {}
+        }
+      },
+      "QuantitativeAnalytics/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/QuantitativeAnalytics.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/QuantitativeAnalytics.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "CalendarLib/1.0.0": {
+      "type": "project",
+      "path": "../CalendarLib/CalendarLib.csproj",
+      "msbuildProject": "../CalendarLib/CalendarLib.csproj"
+    },
+    "InstrumentStatic/1.0.0": {
+      "type": "project",
+      "path": "../InstrumentStatic/InstrumentStatic.csproj",
+      "msbuildProject": "../InstrumentStatic/InstrumentStatic.csproj"
+    },
+    "QuantitativeAnalytics/1.0.0": {
+      "type": "project",
+      "path": "../QuantitativeAnalytics/QuantitativeAnalytics.csproj",
+      "msbuildProject": "../QuantitativeAnalytics/QuantitativeAnalytics.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "CalendarLib >= 1.0.0",
+      "InstrumentStatic >= 1.0.0",
+      "QuantitativeAnalytics >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/Users/almoraboy/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/Users/almoraboy/Projects/AI/MarketData/MarketData.csproj",
+      "projectName": "MarketData",
+      "projectPath": "/Users/almoraboy/Projects/AI/MarketData/MarketData.csproj",
+      "packagesPath": "/Users/almoraboy/.nuget/packages/",
+      "outputPath": "/Users/almoraboy/Projects/AI/MarketData/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {
+            "/Users/almoraboy/Projects/AI/CalendarLib/CalendarLib.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/CalendarLib/CalendarLib.csproj"
+            },
+            "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj"
+            },
+            "/Users/almoraboy/Projects/AI/QuantitativeAnalytics/QuantitativeAnalytics.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/QuantitativeAnalytics/QuantitativeAnalytics.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.200"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

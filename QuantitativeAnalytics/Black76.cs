@@ -1,0 +1,76 @@
+using System;
+
+namespace QuantitativeAnalytics
+{
+    public static class Black76
+    {
+        /// <summary>
+        /// Computes the price (NPV) of a European option using the Black-76 model.
+        /// </summary>
+        public static double NPVIV(bool isCall, double forwardPrice, double strike, double riskFreeRate, double iv, double timeToExpiry)
+        {
+            if (timeToExpiry <= 0)
+            {
+                return isCall ? Math.Max(forwardPrice - strike, 0) : Math.Max(strike - forwardPrice, 0);
+            }
+
+            double d1 = (Math.Log(forwardPrice / strike) + 0.5 * iv * iv * timeToExpiry) / (iv * Math.Sqrt(timeToExpiry));
+            double d2 = d1 - iv * Math.Sqrt(timeToExpiry);
+            double discountFactor = Math.Exp(-riskFreeRate * timeToExpiry);
+
+            if (isCall)
+                return discountFactor * (forwardPrice * Statistics.Phi(d1) - strike * Statistics.Phi(d2));
+            else
+                return discountFactor * (strike * Statistics.Phi(-d2) - forwardPrice * Statistics.Phi(-d1));
+        }
+
+        /// <summary>
+        /// Computes the NPV of an option using Black-76, incorporating the volatility surface adjustments.
+        /// </summary>
+        public static double NPV(bool isCall, double forwardPrice, double strike, double timeToExpiry, double riskFreeRate, VolSurface volSurface)
+        {
+            // Handle expiry case: Option payoff at expiry
+            if (timeToExpiry <= 0)
+            {
+                return isCall ? Math.Max(forwardPrice - strike, 0) : Math.Max(strike - forwardPrice, 0);
+            }
+
+            double moneyness = strike / forwardPrice;
+            double iv = volSurface.GetVol(moneyness);
+            double npv = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv, timeToExpiry);
+
+            if (isCall)
+                npv += volSurface.GetCallPremia(moneyness);
+            else
+                npv += volSurface.GetPutPremia(moneyness);
+
+            return npv;
+        }
+
+        /// <summary>
+        /// Computes the implied volatility using Newton-Raphson method.
+        /// </summary>
+        public static double ComputeIV(bool isCall, double forwardPrice, double strike, double timeToExpiry, double riskFreeRate, double marketPrice, double initialGuess = 1.0, double ivBump = 0.01, int maxIterations = 100, double tolerance = 1e-6)
+        {
+            double iv = initialGuess;
+
+            for (int i = 0; i < maxIterations; i++)
+            {
+                double npv = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv, timeToExpiry);
+                double npvUp = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv + ivBump, timeToExpiry);
+                double npvDown = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv - ivBump, timeToExpiry);
+
+                double vega = (npvUp - npvDown) / (2 * ivBump);
+
+                if (Math.Abs(npv - marketPrice) < tolerance)
+                    return iv;
+
+                iv -= (npv - marketPrice) / vega;
+
+                if (iv <= 0) iv = ivBump; // Prevent negative volatility
+            }
+
+            return iv; // Return last computed IV if convergence not achieved
+        }
+    }
+}
