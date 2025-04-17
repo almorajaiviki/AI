@@ -93,7 +93,8 @@
     "net9.0": [
       "InstrumentStatic >= 1.0.0",
       "MarketData >= 1.0.0",
-      "MarketHelperDict >= 1.0.0"
+      "MarketHelperDict >= 1.0.0",
+      "QuantitativeAnalytics >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -129,6 +130,9 @@
             },
             "/Users/almoraboy/Projects/AI/MarketHelperDict/MarketHelperDict.csproj": {
               "projectPath": "/Users/almoraboy/Projects/AI/MarketHelperDict/MarketHelperDict.csproj"
+            },
+            "/Users/almoraboy/Projects/AI/QuantitativeAnalytics/QuantitativeAnalytics.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/QuantitativeAnalytics/QuantitativeAnalytics.csproj"
             }
           }
         }

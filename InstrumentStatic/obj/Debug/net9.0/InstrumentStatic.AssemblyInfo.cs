@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InstrumentStatic")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8c5df4ba2411401dc8f6450df68dcbb3fb68941b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cf330575f72dc29e246e264cc4956d4740d3287e")]
 [assembly: System.Reflection.AssemblyProductAttribute("InstrumentStatic")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InstrumentStatic")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

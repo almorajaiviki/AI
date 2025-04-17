@@ -10,7 +10,8 @@
         "dependencies": {
           "InstrumentStatic": "1.0.0",
           "MarketData": "1.0.0",
-          "MarketHelperDict": "1.0.0"
+          "MarketHelperDict": "1.0.0",
+          "QuantitativeAnalytics": "1.0.0"
         },
         "runtime": {
           "Broker.dll": {}

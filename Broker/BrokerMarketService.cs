@@ -1,6 +1,8 @@
 using InstrumentStatic;
 using MarketHelperDict;
 using MarketData;
+using QuantitativeAnalytics;
+using System.Reflection.Metadata;
 
 namespace Broker
 {
@@ -70,9 +72,69 @@ namespace Broker
                 options.Select(o => new QuoteRequest(o.Exchange, o.Token, o.TradingSymbol)).ToList()
             ).Result;
 
+            //subscribe to the options
+            BrokerWebSocketService brokerWebSocketService = new(brokerAuthService.CurrentAuthResponse.UserName, brokerAuthService.CurrentAuthResponse.UserName, brokerAuthService.CurrentAuthResponse.Token);
+            brokerWebSocketService.ConnectAsync().Wait();
+            brokerWebSocketService.SubscribeToBatchAsync(options.Select(o => (o.Exchange ,o.Token))).Wait();
+
+            //get OI for all options
+            bool bIsOIFetched = false;
+            while (!bIsOIFetched)
+            {
+                if (options.Select(o => o.Token).Any(token =>  !brokerWebSocketService._subscriptionAcks.Keys.Contains(token)))
+                {
+                    Task.Delay(100).Wait();
+                }
+                else
+                {
+                    bIsOIFetched = true;
+                    brokerWebSocketService.MarkOIFetched();
+                }
+            }
+
+            //calculate iv for each option
+            Dictionary<uint, double> TokenIV =  options.Select(o => new KeyValuePair<uint, double>
+            (o.Token,
+            Black76.ComputeIV
+                (o.OptionType == OptionType.CE, 
+                index.GetSnapshot().ImpliedFuture,
+                o.StrikePrice,
+                _marketInfo.NSECalendar.GetYearFraction(now, o.Expiry),
+                rfr,
+                optionQuotes.Where(oq=>oq.Token == o.Token).First().Ltp            
+                )
+            )).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            //create options
+            List<Option> optionList = options.Select
+            (
+                nfo => 
+                new Option
+                (nfo.OptionType ?? throw new InvalidOperationException($"OptionType is null for token {nfo.Token}"),
+                nfo.TradingSymbol, nfo.Token, nfo.StrikePrice, nfo.Expiry, now, index, rfrObject, 
+            optionQuotes.Where(oq=>oq.Token == nfo.Token).First().Ltp,
+            optionQuotes.Where(oq=>oq.Token == nfo.Token).First().Bid,
+            optionQuotes.Where(oq=>oq.Token == nfo.Token).First().Ask,
+            double.Parse (brokerWebSocketService._subscriptionAcks[nfo.Token].OpenInterest),
+            TokenIV[nfo.Token]
+             ) ).ToList();
+
+             //now create the MarketData object
+             MarketData.MarketData marketData = new MarketData.MarketData(
+                now,
+                index,
+                rfrObject,
+                optionList
+             );
+             //  Return the MarketData object.
+             //  Note: The MarketData object is created with the current date and time.
+             //  The options are created with the latest expiry date.
+             //  The index is created with the latest expiry date.
+                
+
             //  Need more information to construct the MarketData object.
             //  For now, I'll return null.  We'll fill in the details as you provide them.
-            return null;
+            return marketData;
         }
 
     }

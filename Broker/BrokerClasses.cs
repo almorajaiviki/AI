@@ -213,6 +213,18 @@ namespace Broker
         [property: JsonPropertyName("uid")] string UserId,
         [property: JsonPropertyName("s")] string Status
     );
+    public sealed record Subscribe
+    (
+        [property: JsonPropertyName("t")] string Type,
+        [property: JsonPropertyName("k")] string Key
+    );
+
+    public sealed record UnSubscribe
+    (
+        [property: JsonPropertyName("t")] string Type,
+        [property: JsonPropertyName("k")] string Key
+    );
+
     public sealed record AllResponsesCheck(
         [property: JsonPropertyName("t")] string Type
     );

@@ -12,7 +12,20 @@ namespace Broker
         private readonly string _accountId;
         private readonly string _token;
         private readonly Uri _webSocketUri = new(ApiEndpoints.WebSocket);
-        private readonly ConcurrentDictionary<uint, SubscriptionAck> _subscriptionAcks = new();
+        public readonly ConcurrentDictionary<uint, SubscriptionAck> _subscriptionAcks = new();
+        private bool _bIsOIFetched = false;
+        private readonly Lock _flagLock = new();
+
+        private Action<string>? _onAckJsonReceived; // Delegate for tick handling
+
+        public void MarkOIFetched()
+        {
+            lock (_flagLock)
+            {
+                _bIsOIFetched = true;
+                _onAckJsonReceived = SubsribtionAck;
+            }
+        }
 
         public BrokerWebSocketService(string userId, string accountId, string token)
         {
@@ -68,14 +81,28 @@ namespace Broker
             try
             {
                 var check = JsonSerializer.Deserialize<AllResponsesCheck>(json);
+                bool isOIFetched;
+
+                //lock (_flagLock)
+                {
+                    isOIFetched = _bIsOIFetched;
+                }
+
                 switch (check?.Type?.ToLower())
                 {
-                    case "dk": // Subscription Acknowledgement
+                    case "dk":
                     case "tk":
-                        var ack = JsonSerializer.Deserialize<SubscriptionAck>(json);
-                        if (ack?.Token != null && uint.TryParse(ack.Token, out uint token))
+                        if (!isOIFetched)
                         {
-                            _subscriptionAcks[token] = ack;
+                            var ack = JsonSerializer.Deserialize<SubscriptionAck>(json);
+                            if (ack?.Token != null && uint.TryParse(ack.Token, out uint token))
+                            {   
+                                _subscriptionAcks[token] = ack;                                                                       
+                            }
+                        }
+                        else
+                        {
+                            _onAckJsonReceived?.Invoke(json);
                         }
                         break;
 
@@ -84,8 +111,11 @@ namespace Broker
                         Console.WriteLine($"⚠️ Broker Alert: {alert?.Message}");
                         break;
 
-                    // We'll ignore everything else for now.
                     default:
+                        if (isOIFetched)
+                        {
+                            //do nothing
+                        }
                         break;
                 }
             }
@@ -94,7 +124,34 @@ namespace Broker
                 Console.WriteLine($"RouteMessage error: {ex.Message}");
             }
         }
+        private void SubsribtionAck (string json)
+        {
+            //do nothing
+        }
+        public async Task SubscribeAsync(string exchange, uint token, CancellationToken ct = default)
+        {
+            if (_webSocket.State != WebSocketState.Open)
+                throw new InvalidOperationException("WebSocket is not connected.");
 
+            var key = $"{exchange}|{token}";
+            var subscribe = new Subscribe("d", key); // 'd' for depth/touchline feed
+            string json = JsonSerializer.Serialize(subscribe);
+            await SendAsync(json, ct);
+        }
+        public async Task SubscribeToBatchAsync(IEnumerable<(string Exchange, uint Token)> instruments, CancellationToken ct = default)
+        {
+            if (_webSocket.State != WebSocketState.Open)
+                throw new InvalidOperationException("WebSocket is not connected.");
+
+            foreach (var (exchange, token) in instruments)
+            {
+                var key = $"{exchange}|{token}";
+                var subscribe = new Subscribe("d", key);
+                string json = JsonSerializer.Serialize(subscribe);
+                await SendAsync(json, ct);
+                await Task.Delay(10, ct); // small delay to avoid flooding (Shoonya might throttle rapid sends)
+            }
+        }
         public bool TryGetSubscriptionAck(uint token, out SubscriptionAck ack)
         {
             return _subscriptionAcks.TryGetValue(token, out ack);
