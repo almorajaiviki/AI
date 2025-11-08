@@ -1,0 +1,95 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "InstrumentStatic/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/InstrumentStatic.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/InstrumentStatic.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "InstrumentStatic/1.0.0": {
+      "type": "project",
+      "path": "../InstrumentStatic/InstrumentStatic.csproj",
+      "msbuildProject": "../InstrumentStatic/InstrumentStatic.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "InstrumentStatic >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/Users/almoraboy/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj",
+      "projectName": "BrokerInterfaces",
+      "projectPath": "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj",
+      "packagesPath": "/Users/almoraboy/.nuget/packages/",
+      "outputPath": "/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {
+            "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.200"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

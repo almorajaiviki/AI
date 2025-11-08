@@ -110,11 +110,16 @@ public enum DayCountConvention
 
         private double GetDenominator(int year)
         {
+            double tradingSecondsPerDay = (_marketClose - _marketOpen).TotalSeconds;
+            int businessDays = Enumerable.Range(1, DateTime.IsLeapYear(year) ? 366 : 365)
+                .Select(day => new DateTime(year, 1, 1).AddDays(day - 1))
+                .Count(IsBusinessDay);
+
             return _dayCountConvention switch
             {
                 DayCountConvention.Act365 => 365.0 * 24 * 60 * 60,
                 DayCountConvention.Act360 => 360.0 * 24 * 60 * 60,
-                DayCountConvention.ActAct => (DateTime.IsLeapYear(year) ? 366 : 365) * 24 * 60 * 60,
+                DayCountConvention.ActAct => businessDays * tradingSecondsPerDay,
                 _ => throw new InvalidOperationException("Unknown day count convention.")
             };
         }

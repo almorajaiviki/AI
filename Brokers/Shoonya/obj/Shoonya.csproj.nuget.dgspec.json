@@ -1,0 +1,321 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/almoraboy/Projects/AI/Brokers/Shoonya/Shoonya.csproj": {}
+  },
+  "projects": {
+    "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj",
+        "projectName": "BrokerInterfaces",
+        "projectPath": "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj",
+        "packagesPath": "/Users/almoraboy/.nuget/packages/",
+        "outputPath": "/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj": {
+                "projectPath": "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/almoraboy/Projects/AI/Brokers/Shoonya/Shoonya.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/almoraboy/Projects/AI/Brokers/Shoonya/Shoonya.csproj",
+        "projectName": "Shoonya",
+        "projectPath": "/Users/almoraboy/Projects/AI/Brokers/Shoonya/Shoonya.csproj",
+        "packagesPath": "/Users/almoraboy/.nuget/packages/",
+        "outputPath": "/Users/almoraboy/Projects/AI/Brokers/Shoonya/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj": {
+                "projectPath": "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj"
+              },
+              "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj": {
+                "projectPath": "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj"
+              },
+              "/Users/almoraboy/Projects/AI/MarketHelperDict/MarketHelperDict.csproj": {
+                "projectPath": "/Users/almoraboy/Projects/AI/MarketHelperDict/MarketHelperDict.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/almoraboy/Projects/AI/CalendarLib/CalendarLib.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/almoraboy/Projects/AI/CalendarLib/CalendarLib.csproj",
+        "projectName": "CalendarLib",
+        "projectPath": "/Users/almoraboy/Projects/AI/CalendarLib/CalendarLib.csproj",
+        "packagesPath": "/Users/almoraboy/.nuget/packages/",
+        "outputPath": "/Users/almoraboy/Projects/AI/CalendarLib/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj",
+        "projectName": "InstrumentStatic",
+        "projectPath": "/Users/almoraboy/Projects/AI/InstrumentStatic/InstrumentStatic.csproj",
+        "packagesPath": "/Users/almoraboy/.nuget/packages/",
+        "outputPath": "/Users/almoraboy/Projects/AI/InstrumentStatic/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/almoraboy/Projects/AI/MarketHelperDict/MarketHelperDict.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/almoraboy/Projects/AI/MarketHelperDict/MarketHelperDict.csproj",
+        "projectName": "MarketHelperDict",
+        "projectPath": "/Users/almoraboy/Projects/AI/MarketHelperDict/MarketHelperDict.csproj",
+        "packagesPath": "/Users/almoraboy/.nuget/packages/",
+        "outputPath": "/Users/almoraboy/Projects/AI/MarketHelperDict/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/Users/almoraboy/Projects/AI/CalendarLib/CalendarLib.csproj": {
+                "projectPath": "/Users/almoraboy/Projects/AI/CalendarLib/CalendarLib.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

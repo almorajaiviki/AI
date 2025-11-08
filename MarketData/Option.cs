@@ -1,4 +1,3 @@
-using QuantitativeAnalytics;
 using InstrumentStatic;
 
 namespace MarketData
@@ -13,9 +12,8 @@ namespace MarketData
         public double LTP { get; }
         public double Bid { get; }
         public double Ask { get; }
+        public double Mid => (Bid + Ask) / 2;
         public double OI { get; }
-        public double IV { get; }
-        public double Spread { get; }
 
         public OptionSnapshot(
             OptionType optionType,
@@ -26,15 +24,13 @@ namespace MarketData
             double ltp,
             double bid,
             double ask,
-            double oi,
-            double iv,
-            double spread)
+            double oi)
         {
             if (string.IsNullOrWhiteSpace(tradingSymbol))
                 throw new ArgumentException("Trading symbol cannot be null or empty");
             if (strike <= 0)
                 throw new ArgumentException("Strike price must be positive");
-            if (ltp < 0 || bid < 0 || ask < 0 || oi < 0 || iv < 0)
+            if (ltp < 0 || bid < 0 || ask < 0 || oi < 0)
                 throw new ArgumentException("Market data values must be non-negative");
 
             OptionType = optionType;
@@ -46,8 +42,6 @@ namespace MarketData
             Bid = bid;
             Ask = ask;
             OI = oi;
-            IV = iv;
-            Spread = spread;
         }
     }
 
@@ -62,7 +56,6 @@ namespace MarketData
         private double _bid;
         private double _ask;
         private double _oi;
-        private double _iv;
         private readonly object _lock = new();
 
         public OptionType OptionType => _optionType;
@@ -78,13 +71,11 @@ namespace MarketData
             double strike,
             DateTime expiry,
             DateTime now,
-            Index index,
             RFR rfr,
             double ltp,
             double bid,
             double ask,
-            double oi,
-            double iv)
+            double oi)
         {
             // Validate inputs
             if (string.IsNullOrWhiteSpace(tradingSymbol))
@@ -93,7 +84,7 @@ namespace MarketData
                 throw new ArgumentException("Strike price must be positive", nameof(strike));
             if (expiry <= now)
                 throw new ArgumentException("Expiry date must be in the future", nameof(expiry));
-            if (ltp < 0 || bid < 0 || ask < 0 || oi < 0 || iv < 0)
+            if (ltp < 0 || bid < 0 || ask < 0 || oi < 0)
                 throw new ArgumentException("Market data values must be non-negative");
             if (rfr == null)
                 throw new ArgumentNullException(nameof(rfr));
@@ -108,25 +99,6 @@ namespace MarketData
             _bid = bid;
             _ask = ask;
             _oi = oi;
-
-            // Calculate IV using passed RFR
-            try
-            {
-                IndexSnapshot indexSnapshot = index.GetSnapshot();
-                double timeToExpiry = index.Calendar.GetYearFraction(now, _expiry);
-                
-                _iv = Black76.ComputeIV(
-                    isCall: _optionType == OptionType.CE,
-                    forwardPrice: indexSnapshot.ImpliedFuture,
-                    strike: _strike,
-                    timeToExpiry: timeToExpiry,
-                    riskFreeRate: rfr.Value,
-                    marketPrice: ltp);
-            }
-            catch (Exception)
-            {
-                _iv = double.NaN;
-            }
         }
 
         public void UpdateMarketData(
@@ -134,8 +106,6 @@ namespace MarketData
             double bid,
             double ask,
             double oi,
-            DateTime now,
-            Index index,
             RFR rfr)
         {
             // Validate inputs
@@ -151,34 +121,6 @@ namespace MarketData
                 _bid = bid;
                 _ask = ask;
                 _oi = oi;
-
-                // Recalculate IV using passed RFR
-                try
-                {
-                    IndexSnapshot indexSnapshot = index.GetSnapshot();
-                    double timeToExpiry = index.Calendar.GetYearFraction(now, _expiry);
-
-                    _iv = double.IsFinite(_iv)
-                        ? Black76.ComputeIV(
-                            isCall: _optionType == OptionType.CE,
-                            forwardPrice: indexSnapshot.ImpliedFuture,
-                            strike: _strike,
-                            timeToExpiry: timeToExpiry,
-                            riskFreeRate: rfr.Value,
-                            marketPrice: ltp,
-                            initialGuess: _iv)
-                        : Black76.ComputeIV(
-                            isCall: _optionType == OptionType.CE,
-                            forwardPrice: indexSnapshot.ImpliedFuture,
-                            strike: _strike,
-                            timeToExpiry: timeToExpiry,
-                            riskFreeRate: rfr.Value,
-                            marketPrice: ltp);
-                }
-                catch (Exception)
-                {
-                    _iv = double.NaN;
-                }
             }
         }
 
@@ -195,9 +137,9 @@ namespace MarketData
                     ltp: _ltp,
                     bid: _bid,
                     ask: _ask,
-                    oi: _oi,
-                    iv: _iv,
-                    spread: _bid - _ask);
+                    oi: _oi //,
+                    //spread: _bid - _ask
+                    );
             }
         }
     }

@@ -4,21 +4,23 @@ namespace MarketData
 {
     public class Index
     {
-        public string IndexName { get; }
+        public string TradingSymbol { get; }
         public uint Token { get; }
         public MarketCalendar Calendar => _calendar;
+        public double DivYield => _divYield;
 
         private readonly MarketCalendar _calendar;
         private readonly DateTime _expiry;
+        private readonly double _divYield;
         private double _indexSpot;
         private double _impliedFuture;
         private readonly object _lock = new();
 
-        public Index(string indexName, uint token, double indexSpot, 
-                   MarketCalendar calendar, RFR rfr, DateTime expiry, DateTime now)
+        public Index(string tradingSymbol, uint token, double indexSpot, 
+                   MarketCalendar calendar, RFR rfr, double divYield, DateTime expiry, DateTime now)
         {
-            if (string.IsNullOrWhiteSpace(indexName))
-                throw new ArgumentException("Index name cannot be null or empty", nameof(indexName));
+            if (string.IsNullOrWhiteSpace(tradingSymbol))
+                throw new ArgumentException("Index name cannot be null or empty", nameof(tradingSymbol));
             
             if (token == 0)
                 throw new ArgumentException("Token must be greater than zero", nameof(token));
@@ -32,10 +34,11 @@ namespace MarketData
             if (now >= expiry)
                 throw new ArgumentException("Expiry must be in the future", nameof(expiry));
 
-            IndexName = indexName;
+            TradingSymbol = tradingSymbol;
             Token = token;
             _calendar = calendar;
             _expiry = expiry;
+            _divYield = divYield;
             _indexSpot = indexSpot;
             _impliedFuture = CalculateImpliedFuture(indexSpot, rfr, now);
         }
@@ -57,14 +60,14 @@ namespace MarketData
         private double CalculateImpliedFuture(double spot, RFR rfr, DateTime now)
         {
             double timeToExpiry = _calendar.GetYearFraction(now, _expiry);
-            return spot * Math.Exp(rfr.Value * timeToExpiry);
+            return spot * Math.Exp((rfr.Value - _divYield) * timeToExpiry);
         }
 
         public IndexSnapshot GetSnapshot()
         {
             lock (_lock)
             {
-                return new IndexSnapshot(_indexSpot, _impliedFuture);
+                return new IndexSnapshot(_indexSpot, _impliedFuture, Token, _divYield);
             }
         }
 
@@ -74,14 +77,18 @@ namespace MarketData
     {
         public double IndexSpot { get; }
         public double ImpliedFuture { get; }
+        public uint Token { get; }
+        public double DivYield { get; }
 
-        public IndexSnapshot(double indexSpot, double impliedFuture)
+        public IndexSnapshot(double indexSpot, double impliedFuture, uint token, double divYield)
         {
             IndexSpot = indexSpot;
             ImpliedFuture = impliedFuture;
+            Token = token;
+            DivYield = divYield;
         }
 
         public override string ToString()
-            => $"Spot: {IndexSpot}, Future: {ImpliedFuture}";
+            => $"Spot: {IndexSpot}, Future: {ImpliedFuture}, DivYield: {DivYield:P2}";
     }
 }

@@ -1,0 +1,135 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "BrokerInterfaces/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "InstrumentStatic": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/BrokerInterfaces.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/BrokerInterfaces.dll": {}
+        }
+      },
+      "InstrumentStatic/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/InstrumentStatic.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/InstrumentStatic.dll": {}
+        }
+      },
+      "Zerodha/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "BrokerInterfaces": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Zerodha.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Zerodha.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "BrokerInterfaces/1.0.0": {
+      "type": "project",
+      "path": "../BrokerInterfaces/BrokerInterfaces.csproj",
+      "msbuildProject": "../BrokerInterfaces/BrokerInterfaces.csproj"
+    },
+    "InstrumentStatic/1.0.0": {
+      "type": "project",
+      "path": "../InstrumentStatic/InstrumentStatic.csproj",
+      "msbuildProject": "../InstrumentStatic/InstrumentStatic.csproj"
+    },
+    "Zerodha/1.0.0": {
+      "type": "project",
+      "path": "../Brokers/Zerodha/Zerodha.csproj",
+      "msbuildProject": "../Brokers/Zerodha/Zerodha.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "BrokerInterfaces >= 1.0.0",
+      "Zerodha >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/Users/almoraboy/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/Users/almoraboy/Projects/AI/IntegrationTests/IntegrationTests.csproj",
+      "projectName": "IntegrationTests",
+      "projectPath": "/Users/almoraboy/Projects/AI/IntegrationTests/IntegrationTests.csproj",
+      "packagesPath": "/Users/almoraboy/.nuget/packages/",
+      "outputPath": "/Users/almoraboy/Projects/AI/IntegrationTests/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/Users/almoraboy/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {
+            "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/BrokerInterfaces/BrokerInterfaces.csproj"
+            },
+            "/Users/almoraboy/Projects/AI/Brokers/Zerodha/Zerodha.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/Brokers/Zerodha/Zerodha.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.200"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.202/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

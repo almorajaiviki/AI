@@ -8,7 +8,7 @@ namespace MarketHelperDict
     {
         public readonly string IndexSymbol, IndexTradingSymbol, IndexSymbol_Futures, IndexSymbol_Options, Segment;
         public readonly uint LotSize;
-        public readonly int LotsFreeze;
+        public readonly int LotsQuantityFreeze;
         public readonly double LowerStrikePct, UpperStrikePct, TickSize;
         public readonly MarketCalendar NSECalendar;
 
@@ -31,7 +31,7 @@ namespace MarketHelperDict
             IndexSymbol_Options = indexSymbol_Options;
             Segment = segment;
             LotSize = lotSize;
-            LotsFreeze = lotsFreeze;
+            LotsQuantityFreeze = lotsFreeze;
             LowerStrikePct = lowerStrikePct;
             UpperStrikePct = upperStrikePct;
             TickSize = tickSize;
@@ -70,15 +70,15 @@ namespace MarketHelperDict
             MarketCalendar NSECalendar = new MarketCalendar(holidays, weekendDays, marketOpen, marketClose);
 
             MarketInfo NSEMarketInfo = new MarketInfo(
-                "Nifty 50",      // IndexSymbol
+                "NIFTY 50",      // IndexSymbol
                 "NIFTY INDEX",   // IndexTradingSymbol
                 "NIFTY",         // IndexSymbol_Futures
                 "NIFTY",         // IndexSymbol_Options
                 "NFO",           // Segment
                 75,              // LotSize
                 72,              // LotsFreeze
-                -0.1,            // LowerStrikePct
-                0.1,             // UpperStrikePct
+                -0.05,            // LowerStrikePct
+                0.05,             // UpperStrikePct
                 0.05,            // TickSize
                 NSECalendar      // Calendar
             );

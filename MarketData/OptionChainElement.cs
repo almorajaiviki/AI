@@ -8,18 +8,24 @@ namespace MarketData
         private readonly Option _callOption;
         private readonly Option _putOption;
         private readonly double _strike;
-        
+        private readonly IGreeksCalculator _greeksCalculator;
+
         private OptionGreeks _callGreeks;
         private OptionGreeks _putGreeks;
+
+        private OptionSpreads _callSpreads;
+        private OptionSpreads _putSpreads;
+
         private readonly object _lock = new();
 
         public OptionChainElement(
-            Option callOption, 
-            Option putOption, 
-            Index index, 
-            VolSurface volSurface, 
+            Option callOption,
+            Option putOption,
+            Index index, Future? BenchmarkFuture,
+            IParametricModelSkew volSurface,
             RFR rfr,
-            DateTime now)
+            DateTime now,
+            IGreeksCalculator greeksCalculator)
         {
             // Input validation
             if (callOption == null) throw new ArgumentNullException(nameof(callOption));
@@ -27,43 +33,36 @@ namespace MarketData
             if (index == null) throw new ArgumentNullException(nameof(index));
             if (volSurface == null) throw new ArgumentNullException(nameof(volSurface));
             if (rfr == null) throw new ArgumentNullException(nameof(rfr));
-            if (callOption.OptionType != OptionType.CE) 
+            if (greeksCalculator == null) throw new ArgumentNullException(nameof(greeksCalculator));
+            if (callOption.OptionType != OptionType.CE)
                 throw new ArgumentException("First option must be a call");
-            if (putOption.OptionType != OptionType.PE) 
+            if (putOption.OptionType != OptionType.PE)
                 throw new ArgumentException("Second option must be a put");
-            if (callOption.Strike != putOption.Strike) 
+            if (callOption.Strike != putOption.Strike)
                 throw new ArgumentException($"Strike mismatch: {callOption.Strike} vs {putOption.Strike}");
-            if (callOption.Expiry != putOption.Expiry) 
+            if (callOption.Expiry != putOption.Expiry)
                 throw new ArgumentException($"Expiry mismatch: {callOption.Expiry} vs {putOption.Expiry}");
 
             _callOption = callOption;
             _putOption = putOption;
             _strike = callOption.Strike;
+            _greeksCalculator = greeksCalculator;
 
-            // Initial Greeks calculation
             var indexSnapshot = index.GetSnapshot();
             double timeToExpiry = index.Calendar.GetYearFraction(now, callOption.Expiry);
-            
-            _callGreeks = new OptionGreeks(
-                optionSnapshot: callOption.GetSnapshot(),
-                impliedFuture: indexSnapshot.ImpliedFuture,
-                riskFreeRate: rfr.Value,  // Using passed RFR
-                timeToExpiry: timeToExpiry,
-                volSurface: volSurface);
-                
-            _putGreeks = new OptionGreeks(
-                optionSnapshot: putOption.GetSnapshot(),
-                impliedFuture: indexSnapshot.ImpliedFuture,
-                riskFreeRate: rfr.Value,  // Using passed RFR
-                timeToExpiry: timeToExpiry,
-                volSurface: volSurface);
+
+            double forwardPrice = BenchmarkFuture != null ? BenchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
+
+            // Greeks
+            _callGreeks = new OptionGreeks(callOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+            _putGreeks = new OptionGreeks(putOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+
+            // Spreads
+            _callSpreads = new OptionSpreads(callOption.GetSnapshot(), _callGreeks);
+            _putSpreads = new OptionSpreads(putOption.GetSnapshot(), _putGreeks);
         }
 
-        public void UpdateGreeks(
-            Index index, 
-            VolSurface volSurface, 
-            RFR rfr,
-            DateTime now)
+        public void UpdateGreeks(Index index, Future? BenchmarkFuture, IParametricModelSkew volSurface, RFR rfr, DateTime now)
         {
             if (index == null) throw new ArgumentNullException(nameof(index));
             if (volSurface == null) throw new ArgumentNullException(nameof(volSurface));
@@ -73,20 +72,15 @@ namespace MarketData
             {
                 var indexSnapshot = index.GetSnapshot();
                 double timeToExpiry = index.Calendar.GetYearFraction(now, _callOption.Expiry);
-                
-                _callGreeks = new OptionGreeks(
-                    optionSnapshot: _callOption.GetSnapshot(),
-                    impliedFuture: indexSnapshot.ImpliedFuture,
-                    riskFreeRate: rfr.Value,  // Using passed RFR
-                    timeToExpiry: timeToExpiry,
-                    volSurface: volSurface);
-                    
-                _putGreeks = new OptionGreeks(
-                    optionSnapshot: _putOption.GetSnapshot(),
-                    impliedFuture: indexSnapshot.ImpliedFuture,
-                    riskFreeRate: rfr.Value,  // Using passed RFR
-                    timeToExpiry: timeToExpiry,
-                    volSurface: volSurface);
+                double forwardPrice = BenchmarkFuture != null ? BenchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
+
+                // Update Greeks
+                _callGreeks = new OptionGreeks(_callOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+                _putGreeks = new OptionGreeks(_putOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+
+                // Update Spreads
+                _callSpreads = new OptionSpreads(_callOption.GetSnapshot(), _callGreeks);
+                _putSpreads = new OptionSpreads(_putOption.GetSnapshot(), _putGreeks);
             }
         }
 
@@ -94,7 +88,11 @@ namespace MarketData
         public Option CallOption => _callOption;
         public Option PutOption => _putOption;
         public double Strike => _strike;
+
         public OptionGreeks CallGreeks => _callGreeks;
         public OptionGreeks PutGreeks => _putGreeks;
+
+        public OptionSpreads CallSpreads => _callSpreads;
+        public OptionSpreads PutSpreads => _putSpreads;
     }
 }

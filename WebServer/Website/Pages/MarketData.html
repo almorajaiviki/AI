@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Broker Market Data App</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; text-align: center; }
+        th, td { border: 1px solid #ddd; padding: 4px; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/msgpackr@1.10.1/dist/msgpackr.min.js"></script>
+</head>
+<body>
+    <h3>Market Snapshot</h3>
+    <div id="market-info"></div>
+    <h3>Option Chain</h3>
+    <div id="option-chain"></div>
+    <h3>Futures</h3>
+    <div id="futures"></div>
+
+    <script src="MarketData.js"></script>
+</body>
+</html>
