@@ -1,0 +1,67 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "MarketData/1.0.0": {
+        "dependencies": {
+          "CalendarLib": "1.0.0",
+          "InstrumentStatic": "1.0.0",
+          "QuantitativeAnalytics": "1.0.0"
+        },
+        "runtime": {
+          "MarketData.dll": {}
+        }
+      },
+      "CalendarLib/1.0.0": {
+        "runtime": {
+          "CalendarLib.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "InstrumentStatic/1.0.0": {
+        "runtime": {
+          "InstrumentStatic.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "QuantitativeAnalytics/1.0.0": {
+        "runtime": {
+          "QuantitativeAnalytics.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "MarketData/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "CalendarLib/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "InstrumentStatic/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "QuantitativeAnalytics/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

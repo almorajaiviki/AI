@@ -12,7 +12,7 @@ namespace QuantitativeAnalytics
             double rate,
             double dividendYield,
             double tte,
-            IParametricModelSkew surface);
+            IParametricModelSurface surface);
 
         double Delta(
             ProductType productType,
@@ -24,7 +24,7 @@ namespace QuantitativeAnalytics
             double rate,
             double dividendYield,
             double tte,
-            IParametricModelSkew surface);
+            IParametricModelSurface surface);
 
         double Gamma(
             ProductType productType,
@@ -36,7 +36,7 @@ namespace QuantitativeAnalytics
             double rate,
             double dividendYield,
             double tte,
-            IParametricModelSkew surface);
+            IParametricModelSurface surface);
 
         /// <summary>
         /// Granular vega with parameterwise bumping support.
@@ -54,7 +54,7 @@ namespace QuantitativeAnalytics
             double rate,
             double dividendYield,
             double tte,
-            IParametricModelSkew surface,
+            IParametricModelSurface surface,
             IEnumerable<(string parameterName, double bumpAmount)>? bumps = null);
 
         double Theta(
@@ -67,7 +67,7 @@ namespace QuantitativeAnalytics
             double rate,
             double dividendYield,
             double tte,
-            IParametricModelSkew surface);
+            IParametricModelSurface surface);
 
         double Rho(
             ProductType productType,
@@ -79,6 +79,6 @@ namespace QuantitativeAnalytics
             double rate,
             double dividendYield,
             double tte,
-            IParametricModelSkew surface);
+            IParametricModelSurface surface);
     }
 }

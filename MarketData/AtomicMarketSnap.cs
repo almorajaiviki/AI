@@ -19,7 +19,7 @@ namespace MarketData
         private readonly uint _token;
         private readonly double _riskFreeRate;
         private readonly double _divYield;
-        private readonly IParametricModelSkew _volSurface;
+        private readonly IParametricModelSurface _volSurface;
         private readonly MarketCalendar _calendar;
 
         // Option and Future stores
@@ -44,7 +44,7 @@ namespace MarketData
             ImmutableArray<FutureElement> futureElements,
             MarketCalendar calendar,
             string indexTradingSymbol,
-            IParametricModelSkew volSurface)
+            IParametricModelSurface volSurface)
         {
             // === Validation ===
             if (initializationTime == default)
@@ -92,7 +92,7 @@ namespace MarketData
         public double RiskFreeRate => _riskFreeRate;
         public double DivYield => _divYield;
         public uint Token => _token;
-        public IParametricModelSkew VolSurface => _volSurface;
+        public IParametricModelSurface VolSurface => _volSurface;
 
         public ImmutableDictionary<double, OptionPair> OptionChainElements => _optionChainElements;
         public ImmutableDictionary<uint, FutureDetail> FuturesByToken => _futuresByToken;

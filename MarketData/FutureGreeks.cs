@@ -19,7 +19,7 @@ namespace MarketData
             double riskFreeRate,
             double dividendYield,
             double timeToExpiry,
-            IParametricModelSkew volSurface,
+            IParametricModelSurface volSurface,
             IGreeksCalculator greeksCalculator)
         {
             Token = futureSnapshot.Token;

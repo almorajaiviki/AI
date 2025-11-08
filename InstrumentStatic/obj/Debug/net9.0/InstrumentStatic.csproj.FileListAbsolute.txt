@@ -1,0 +1,12 @@
+/Users/almoraboy/Projects/AI/InstrumentStatic/bin/Debug/net9.0/InstrumentStatic.deps.json
+/Users/almoraboy/Projects/AI/InstrumentStatic/bin/Debug/net9.0/InstrumentStatic.dll
+/Users/almoraboy/Projects/AI/InstrumentStatic/bin/Debug/net9.0/InstrumentStatic.pdb
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/InstrumentStatic.GeneratedMSBuildEditorConfig.editorconfig
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/InstrumentStatic.AssemblyInfoInputs.cache
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/InstrumentStatic.AssemblyInfo.cs
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/InstrumentStatic.csproj.CoreCompileInputs.cache
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/InstrumentStatic.sourcelink.json
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/InstrumentStatic.dll
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/refint/InstrumentStatic.dll
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/InstrumentStatic.pdb
+/Users/almoraboy/Projects/AI/InstrumentStatic/obj/Debug/net9.0/ref/InstrumentStatic.dll

@@ -27,9 +27,9 @@ namespace QuantitativeAnalytics
         IParametricModelSkew Bump(IEnumerable<(string parameterName, double bumpAmount)> bumps);
 
         /// <summary> convert surface data to DTO for serialization </summary>
-        VolSurfaceDTO ToDTO();
+        VolSkewDTO ToDTO();
 
-        IParametricModelSkew FromDTO(VolSurfaceDTO dto);
+        IParametricModelSkew FromDTO(VolSkewDTO dto);
 
         /// <summary>
         /// Returns a list of bumpable parameter names
@@ -38,6 +38,56 @@ namespace QuantitativeAnalytics
         IEnumerable<string> GetBumpParamNames();
     }
 
+
+
+    /// <summary>
+    /// Unified interface for parameterised volatility surfaces (2D: time × moneyness).
+    /// Supports retrieving implied vols, bumping, and serialization.
+    /// </summary>
+    public interface IParametricModelSurface
+    {
+        /// <summary>
+        /// Return implied volatility at given (timeToExpiry, moneyness).
+        /// </summary>
+        double GetVol(double timeToExpiry, double moneyness);
+
+        /// <summary>
+        /// Return 2D parameter set:
+        /// (parameterName, expiryString, value)
+        /// </summary>
+        IEnumerable<(string parameterName, string expiryString, double value)> GetParameters();
+
+        /// <summary>
+        /// Parallel absolute bump across all skews and expiries.
+        /// </summary>
+        IParametricModelSurface Bump(double bumpAmount);
+
+        /// <summary>
+        /// Pointwise bump by parameter name (applies across all expiries).
+        /// </summary>
+        IParametricModelSurface Bump(string parameterName, double bumpAmount);
+
+        /// <summary>
+        /// Apply multiple bumps sequentially.
+        /// </summary>
+        IParametricModelSurface Bump(IEnumerable<(string parameterName, double bumpAmount)> bumps);
+
+        /// <summary>
+        /// Convert the entire surface to a serializable DTO.
+        /// </summary>
+        VolSurfaceDTO ToDTO();
+
+        /// <summary>
+        /// Reconstructs the surface from its DTO representation.
+        /// </summary>
+        IParametricModelSurface FromDTO(VolSurfaceDTO dto);
+
+        /// <summary>
+        /// Returns all bumpable parameter names supported by this surface.
+        /// </summary>
+        IEnumerable<string> GetBumpParamNames();
+    }
+    
     /// <summary>
     /// Supported option pricing volatility models.
     /// </summary>

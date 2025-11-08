@@ -1,0 +1,72 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "IntegrationTests/1.0.0": {
+        "dependencies": {
+          "BrokerInterfaces": "1.0.0",
+          "Zerodha": "1.0.0"
+        },
+        "runtime": {
+          "IntegrationTests.dll": {}
+        }
+      },
+      "BrokerInterfaces/1.0.0": {
+        "dependencies": {
+          "InstrumentStatic": "1.0.0"
+        },
+        "runtime": {
+          "BrokerInterfaces.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "InstrumentStatic/1.0.0": {
+        "runtime": {
+          "InstrumentStatic.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Zerodha/1.0.0": {
+        "dependencies": {
+          "BrokerInterfaces": "1.0.0"
+        },
+        "runtime": {
+          "Zerodha.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "IntegrationTests/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "BrokerInterfaces/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "InstrumentStatic/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Zerodha/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

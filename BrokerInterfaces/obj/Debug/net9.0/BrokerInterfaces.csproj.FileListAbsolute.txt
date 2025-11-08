@@ -1,0 +1,16 @@
+/Users/almoraboy/Projects/AI/BrokerInterfaces/bin/Debug/net9.0/BrokerInterfaces.deps.json
+/Users/almoraboy/Projects/AI/BrokerInterfaces/bin/Debug/net9.0/BrokerInterfaces.dll
+/Users/almoraboy/Projects/AI/BrokerInterfaces/bin/Debug/net9.0/BrokerInterfaces.pdb
+/Users/almoraboy/Projects/AI/BrokerInterfaces/bin/Debug/net9.0/InstrumentStatic.dll
+/Users/almoraboy/Projects/AI/BrokerInterfaces/bin/Debug/net9.0/InstrumentStatic.pdb
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.csproj.AssemblyReference.cache
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.GeneratedMSBuildEditorConfig.editorconfig
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.AssemblyInfoInputs.cache
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.AssemblyInfo.cs
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.csproj.CoreCompileInputs.cache
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.sourcelink.json
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerIn.039ACDF1.Up2Date
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.dll
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/refint/BrokerInterfaces.dll
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/BrokerInterfaces.pdb
+/Users/almoraboy/Projects/AI/BrokerInterfaces/obj/Debug/net9.0/ref/BrokerInterfaces.dll

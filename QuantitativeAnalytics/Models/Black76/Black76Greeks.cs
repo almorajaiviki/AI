@@ -2,12 +2,12 @@ namespace QuantitativeAnalytics
 {
     internal static class Black76Greeks
     {
-        internal static double NPV(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSkew? volSurface)
+        internal static double NPV(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface)
         {
             return Black76.NPV(productType, isCall, Spot, forwardPrice, bIsFutureBenchmark, strike, timeToExpiry, riskFreeRate, dividendYield, volSurface);
         }
 
-        internal static double Delta(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSkew? volSurface, double bumpSize = 0.001)
+        internal static double Delta(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.001)
         {
             double bumpedForward = forwardPrice * (1 + bumpSize);
             double npvUp = NPV(productType, isCall, Spot, bumpedForward, bIsFutureBenchmark, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
@@ -18,7 +18,7 @@ namespace QuantitativeAnalytics
             return (npvUp - npvDown) / 2.0;
         }
 
-        internal static double Gamma(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSkew? volSurface, double bumpSize = 0.001)
+        internal static double Gamma(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.001)
         {
             double bumpedForward = forwardPrice * (1 + bumpSize);
             double npvUp = NPV(productType, isCall, Spot, bumpedForward, bIsFutureBenchmark, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
@@ -31,7 +31,7 @@ namespace QuantitativeAnalytics
             return (npvUp - 2 * npvAt + npvDown);
         }
 
-        internal static IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSkew volSurface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
+        internal static IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface volSurface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
         {
             if (productType != ProductType.Option)
                 yield break; // Vega not defined for futures
@@ -65,7 +65,7 @@ namespace QuantitativeAnalytics
             }
         }
 
-        internal static double Theta(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSkew? volSurface)
+        internal static double Theta(ProductType productType, bool isCall, double Spot, double forwardPrice, bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface)
         {
             double npvAt = NPV(productType, isCall, Spot, forwardPrice, bIsFutureBenchmark, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
             double bumpedTimeToExpiry = Math.Max(0, timeToExpiry - (1.0 / 365.0));
@@ -73,7 +73,7 @@ namespace QuantitativeAnalytics
             return (npvBumped - npvAt);
         }
 
-        internal static double Rho(ProductType productType, bool isCall, double Spot, double forwardPrice,bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSkew? volSurface, double bumpSize = 0.0001)
+        internal static double Rho(ProductType productType, bool isCall, double Spot, double forwardPrice,bool bIsFutureBenchmark, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.0001)
         {
             double bumpedUpRate = riskFreeRate + bumpSize;
             double npvUp = NPV(productType, isCall, Spot, forwardPrice, bIsFutureBenchmark, strike, bumpedUpRate, dividendYield, timeToExpiry, volSurface);
@@ -93,22 +93,22 @@ namespace QuantitativeAnalytics
         public static Black76GreeksCalculator Instance { get; } = new Black76GreeksCalculator();
         private Black76GreeksCalculator() { }
 
-        public double NPV(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSkew? surface)
+        public double NPV(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
             => Black76Greeks.NPV(productType, isCall, Spot, forward, bIsFutureBenchmark, strike, rate, dividendYield, tte, surface);
 
-        public double Delta(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSkew? surface)
+        public double Delta(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
             => Black76Greeks.Delta(productType, isCall, Spot, forward, bIsFutureBenchmark, strike, rate, dividendYield, tte, surface);
 
-        public double Gamma(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSkew? surface)
+        public double Gamma(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
             => Black76Greeks.Gamma(productType, isCall, Spot, forward, bIsFutureBenchmark, strike, rate, dividendYield, tte, surface);
 
-        public IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSkew surface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
+        public IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSurface surface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
             => Black76Greeks.VegaByParam(productType, isCall, Spot, forward, bIsFutureBenchmark, strike, rate, dividendYield, tte, surface, bumps);
 
-        public double Theta(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSkew? surface)
+        public double Theta(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
             => Black76Greeks.Theta(productType, isCall, Spot, forward, bIsFutureBenchmark, strike, rate, dividendYield, tte, surface);
 
-        public double Rho(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSkew? surface)
+        public double Rho(ProductType productType, bool isCall, double Spot, double forward, bool bIsFutureBenchmark, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
             => Black76Greeks.Rho(productType, isCall, Spot, forward, bIsFutureBenchmark, strike, rate, dividendYield, tte, surface);
     }
 }

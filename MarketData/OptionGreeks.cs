@@ -21,7 +21,7 @@ namespace MarketData
             double impliedFuture,
             double riskFreeRate,
             double timeToExpiry,
-            IParametricModelSkew volSurface,
+            IParametricModelSurface volSurface,
             IGreeksCalculator greeksCalculator)
         {
             Token = optionSnapshot.Token;
@@ -30,9 +30,9 @@ namespace MarketData
             double strike = optionSnapshot.Strike;
             double moneyness = strike / impliedFuture;
             double dividendYield = 0.0; // Hardcoded for now
-            var productType = ProductType.Option;
+            var productType = ProductType.Option;            
 
-            IV_Used = volSurface.GetVol(moneyness);
+            IV_Used = volSurface.GetVol(timeToExpiry ,moneyness);
 
             //for options, the decision to use benchmark future or spot is made in MarketData class
             NPV = greeksCalculator.NPV(

@@ -22,7 +22,7 @@ namespace MarketData
             Option callOption,
             Option putOption,
             Index index, Future? BenchmarkFuture,
-            IParametricModelSkew volSurface,
+            IParametricModelSurface volSurface,
             RFR rfr,
             DateTime now,
             IGreeksCalculator greeksCalculator)
@@ -62,7 +62,7 @@ namespace MarketData
             _putSpreads = new OptionSpreads(putOption.GetSnapshot(), _putGreeks);
         }
 
-        public void UpdateGreeks(Index index, Future? BenchmarkFuture, IParametricModelSkew volSurface, RFR rfr, DateTime now)
+        public void UpdateGreeks(Index index, Future? BenchmarkFuture, IParametricModelSurface volSurface, RFR rfr, DateTime now)
         {
             if (index == null) throw new ArgumentNullException(nameof(index));
             if (volSurface == null) throw new ArgumentNullException(nameof(volSurface));

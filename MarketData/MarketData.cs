@@ -105,7 +105,7 @@ namespace MarketData
                 throw new ArgumentException($"Volatility model '{volatilityModel}' is not supported yet.");
             }
 
-            IParametricModelSkew volSurface = CreateVolatilitySurface(OICutoff);
+            IParametricModelSurface volSurface = CreateVolatilitySurface(OICutoff);
 
             foreach (var future in futuresList)
             {
@@ -133,7 +133,7 @@ namespace MarketData
 
         }
 
-        private IParametricModelSkew CreateVolatilitySurface(double OICutoff)
+        private IParametricModelSurface CreateVolatilitySurface(double OICutoff)
         {
             var indexSnapshot = _index.GetSnapshot();
             var expiry = _optionsByToken.Values.First().Expiry;
@@ -155,11 +155,11 @@ namespace MarketData
 
             double forwardPrice = _benchmarkFuture != null ? _benchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
 
-            IParametricModelSkew volSurface;
+            IParametricModelSurface volSurface;
             switch (_volatilityModel)
             {
                 case VolatilityModel.Black76:
-                    volSurface = new Black76VolSkewSurface(
+                    volSurface = new Black76VolSurface(
                         callData,
                         putData,
                         forwardPrice, // forwardPrice
@@ -173,7 +173,7 @@ namespace MarketData
             return volSurface;
         }
 
-        private void UpdateAtomicSnapshot(IParametricModelSkew volSurface)
+        private void UpdateAtomicSnapshot(IParametricModelSurface volSurface)
         {
             lock (_snapshotLock)
             {
@@ -216,7 +216,7 @@ namespace MarketData
             }
         }
 
-        private List<OptionChainElement> ValidateAndCreateOptionChain(List<Option> options, DateTime now, IParametricModelSkew volSurface, IGreeksCalculator greeksCalculator)
+        private List<OptionChainElement> ValidateAndCreateOptionChain(List<Option> options, DateTime now, IParametricModelSurface volSurface, IGreeksCalculator greeksCalculator)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
             if (!options.Any()) throw new ArgumentException("Options collection cannot be empty");
@@ -368,7 +368,7 @@ namespace MarketData
                     });
 
                     // Step 6: Create Volatility Surface
-                    IParametricModelSkew volSurface = CreateVolatilitySurface(_OICutoff);
+                    IParametricModelSurface volSurface = CreateVolatilitySurface(_OICutoff);
 
                     // Step 7: Parallel Greek updates for options
                     Parallel.ForEach(_optionChainByStrike.Values, chainElement =>

@@ -1,0 +1,16 @@
+/Users/almoraboy/Projects/AI/MarketHelperDict/bin/Debug/net9.0/MarketHelperDict.deps.json
+/Users/almoraboy/Projects/AI/MarketHelperDict/bin/Debug/net9.0/MarketHelperDict.dll
+/Users/almoraboy/Projects/AI/MarketHelperDict/bin/Debug/net9.0/MarketHelperDict.pdb
+/Users/almoraboy/Projects/AI/MarketHelperDict/bin/Debug/net9.0/CalendarLib.dll
+/Users/almoraboy/Projects/AI/MarketHelperDict/bin/Debug/net9.0/CalendarLib.pdb
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.csproj.AssemblyReference.cache
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.GeneratedMSBuildEditorConfig.editorconfig
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.AssemblyInfoInputs.cache
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.AssemblyInfo.cs
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.csproj.CoreCompileInputs.cache
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.sourcelink.json
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHe.D20C4931.Up2Date
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.dll
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/refint/MarketHelperDict.dll
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/MarketHelperDict.pdb
+/Users/almoraboy/Projects/AI/MarketHelperDict/obj/Debug/net9.0/ref/MarketHelperDict.dll

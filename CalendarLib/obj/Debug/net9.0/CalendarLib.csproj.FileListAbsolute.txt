@@ -1,0 +1,12 @@
+/Users/almoraboy/Projects/AI/CalendarLib/bin/Debug/net9.0/CalendarLib.deps.json
+/Users/almoraboy/Projects/AI/CalendarLib/bin/Debug/net9.0/CalendarLib.dll
+/Users/almoraboy/Projects/AI/CalendarLib/bin/Debug/net9.0/CalendarLib.pdb
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/CalendarLib.GeneratedMSBuildEditorConfig.editorconfig
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/CalendarLib.AssemblyInfoInputs.cache
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/CalendarLib.AssemblyInfo.cs
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/CalendarLib.csproj.CoreCompileInputs.cache
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/CalendarLib.sourcelink.json
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/CalendarLib.dll
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/refint/CalendarLib.dll
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/CalendarLib.pdb
+/Users/almoraboy/Projects/AI/CalendarLib/obj/Debug/net9.0/ref/CalendarLib.dll

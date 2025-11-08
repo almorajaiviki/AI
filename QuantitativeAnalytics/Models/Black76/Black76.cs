@@ -32,7 +32,7 @@ namespace QuantitativeAnalytics
             double timeToExpiry,
             double riskFreeRate,
             double dividendYield,
-            IParametricModelSkew? volSurface = null)
+            IParametricModelSurface? volSurface = null)
         {
             switch (productType)
             {
@@ -51,7 +51,7 @@ namespace QuantitativeAnalytics
                         return isCall ? Math.Max(forwardPrice - strike, 0) : Math.Max(strike - forwardPrice, 0);
 
                     double moneyness = strike / forwardPrice;
-                    double iv = volSurface.GetVol(moneyness);
+                    double iv = volSurface.GetVol(timeToExpiry, moneyness);
 
                     return NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv, timeToExpiry);
 
