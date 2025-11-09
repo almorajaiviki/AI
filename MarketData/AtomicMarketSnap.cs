@@ -26,8 +26,8 @@ namespace MarketData
         private readonly ImmutableDictionary<uint, OptionSnapshot> _optionsByToken;
         private readonly ImmutableDictionary<string, OptionSnapshot> _optionsByTradingSymbol;
         private readonly ImmutableDictionary<double, OptionPair> _optionChainElements;
-        private readonly ImmutableDictionary<uint, FutureDetail> _futuresByToken;
-        private readonly ImmutableDictionary<string, FutureDetail> _futuresByTradingSymbol;
+        private readonly ImmutableDictionary<uint, FutureDetailDTO> _futuresByToken;
+        private readonly ImmutableDictionary<string, FutureDetailDTO> _futuresByTradingSymbol;
 
         public ImmutableDictionary<uint, OptionSnapshot> OptionsByToken => _optionsByToken;
 
@@ -95,7 +95,7 @@ namespace MarketData
         public IParametricModelSurface VolSurface => _volSurface;
 
         public ImmutableDictionary<double, OptionPair> OptionChainElements => _optionChainElements;
-        public ImmutableDictionary<uint, FutureDetail> FuturesByToken => _futuresByToken;
+        public ImmutableDictionary<uint, FutureDetailDTO> FuturesByToken => _futuresByToken;
 
         // === Store Builders ===
         private static (
@@ -131,16 +131,16 @@ namespace MarketData
         }
 
         private static (
-            ImmutableDictionary<uint, FutureDetail>,
-            ImmutableDictionary<string, FutureDetail>
+            ImmutableDictionary<uint, FutureDetailDTO>,
+            ImmutableDictionary<string, FutureDetailDTO>
         ) BuildFutureStores(ImmutableArray<FutureElement> futureElements)
         {
-            var byToken = ImmutableDictionary.CreateBuilder<uint, FutureDetail>();
-            var bySymbol = ImmutableDictionary.CreateBuilder<string, FutureDetail>();
+            var byToken = ImmutableDictionary.CreateBuilder<uint, FutureDetailDTO>();
+            var bySymbol = ImmutableDictionary.CreateBuilder<string, FutureDetailDTO>();
 
             foreach (var el in futureElements)
             {
-                var detail = new FutureDetail(el.Future.GetSnapshot(), el.FutureGreeks, el.FutureSpreads);
+                var detail = new FutureDetailDTO(el.Future.GetSnapshot(), el.FutureGreeks, el.FutureSpreads);
                 byToken[el.Future.Token] = detail;
                 bySymbol[el.Future.TradingSymbol] = detail;
             }
@@ -362,7 +362,7 @@ namespace MarketData
         public DateTime SnapTime { get; set; }
 
         public OptionPairDTO[] OptionPairs { get; set; } = Array.Empty<OptionPairDTO>();
-        public FutureDetail[]? Futures { get; set; }
+        public FutureDetailDTO[]? Futures { get; set; }
         public VolSurfaceDTO? VolSurface { get; set; }
     }
 
@@ -405,13 +405,13 @@ namespace MarketData
         public double P_askSpread { get; set; }
     }
 
-    public sealed class FutureDetail
+    public sealed class FutureDetailDTO
     {
         public FutureSnapshot FutureSnapshot { get; }
         public FutureGreeks FutureGreeks { get; }
         public FutureSpreads FutureSpreads { get; }
 
-        public FutureDetail(FutureSnapshot snapshot, FutureGreeks greeks, FutureSpreads spreads)
+        public FutureDetailDTO(FutureSnapshot snapshot, FutureGreeks greeks, FutureSpreads spreads)
         {
             FutureSnapshot = snapshot;
             FutureGreeks = greeks;

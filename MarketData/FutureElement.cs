@@ -1,4 +1,5 @@
 using QuantitativeAnalytics;
+using CalendarLib;
 
 namespace MarketData
 {
@@ -68,4 +69,29 @@ namespace MarketData
             }
         }
     }
+
+    public static class ForwardHelper
+    {
+        /// <summary>
+        /// Returns the interpolated forward price for a given time, based on spot, dividend yield, and multiple futures.
+        /// </summary>
+        /// <param name="spot">Current spot price of the underlying index.</param>
+        /// <param name="futures">Collection of FutureDetail objects with expiry and prices.</param>
+        /// <param name="calendar">Calendar used for computing time differences.</param>
+        /// <param name="divYield">Continuous dividend yield (annualized).</param>
+        /// <param name="targetTimeFromNow">Target time (year fraction) for which to estimate the forward.</param>
+        /// <returns>Interpolated forward price.</returns>
+        public static double GetForwardPrice(
+            double spot,
+            IEnumerable<FutureDetailDTO> futures,
+            MarketCalendar calendar,
+            double divYield,
+            DateTime now,
+            double targetTimeFromNow)
+        {
+            // 🧩 Placeholder: to be implemented later
+            throw new NotImplementedException("Forward curve interpolation not yet implemented.");
+        }
+    }
+
 }
