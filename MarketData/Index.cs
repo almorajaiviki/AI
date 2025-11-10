@@ -13,7 +13,7 @@ namespace MarketData
         private readonly DateTime _expiry;
         private readonly double _divYield;
         private double _indexSpot;
-        private double _impliedFuture;
+        //private double _impliedFuture;
         private readonly object _lock = new();
 
         public Index(string tradingSymbol, uint token, double indexSpot, 
@@ -40,7 +40,7 @@ namespace MarketData
             _expiry = expiry;
             _divYield = divYield;
             _indexSpot = indexSpot;
-            _impliedFuture = CalculateImpliedFuture(indexSpot, rfr, now);
+            //_impliedFuture = CalculateImpliedFuture(indexSpot, rfr, now);
         }
 
         public void UpdateSpot(double newSpot, RFR rfr, DateTime now)
@@ -53,7 +53,7 @@ namespace MarketData
             lock (_lock)
             {
                 _indexSpot = newSpot;
-                _impliedFuture = CalculateImpliedFuture(newSpot, rfr, now);
+                //_impliedFuture = CalculateImpliedFuture(newSpot, rfr, now);
             }
         }
 
@@ -67,7 +67,7 @@ namespace MarketData
         {
             lock (_lock)
             {
-                return new IndexSnapshot(_indexSpot, _impliedFuture, Token, _divYield);
+                return new IndexSnapshot(_indexSpot, Token, _divYield);
             }
         }
 
@@ -76,19 +76,19 @@ namespace MarketData
     public readonly struct IndexSnapshot
     {
         public double IndexSpot { get; }
-        public double ImpliedFuture { get; }
+        //public double ImpliedFuture { get; }
         public uint Token { get; }
         public double DivYield { get; }
 
-        public IndexSnapshot(double indexSpot, double impliedFuture, uint token, double divYield)
+        public IndexSnapshot(double indexSpot, uint token, double divYield)
         {
             IndexSpot = indexSpot;
-            ImpliedFuture = impliedFuture;
+            //ImpliedFuture = impliedFuture;
             Token = token;
             DivYield = divYield;
         }
 
         public override string ToString()
-            => $"Spot: {IndexSpot}, Future: {ImpliedFuture}, DivYield: {DivYield:P2}";
+            => $"Spot: {IndexSpot}, DivYield: {DivYield:P2}";
     }
 }

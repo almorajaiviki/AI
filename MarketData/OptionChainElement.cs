@@ -21,7 +21,7 @@ namespace MarketData
         public OptionChainElement(
             Option callOption,
             Option putOption,
-            Index index, Future? BenchmarkFuture,
+            Index index, ForwardCurve forwardCurve,
             IParametricModelSurface volSurface,
             RFR rfr,
             DateTime now,
@@ -51,7 +51,7 @@ namespace MarketData
             var indexSnapshot = index.GetSnapshot();
             double timeToExpiry = index.Calendar.GetYearFraction(now, callOption.Expiry);
 
-            double forwardPrice = BenchmarkFuture != null ? BenchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
+            double forwardPrice = forwardCurve.GetForwardPrice(timeToExpiry);
 
             // Greeks
             _callGreeks = new OptionGreeks(callOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
@@ -62,7 +62,7 @@ namespace MarketData
             _putSpreads = new OptionSpreads(putOption.GetSnapshot(), _putGreeks);
         }
 
-        public void UpdateGreeks(Index index, Future? BenchmarkFuture, IParametricModelSurface volSurface, RFR rfr, DateTime now)
+        public void UpdateGreeks(Index index, ForwardCurve forwardCurve, IParametricModelSurface volSurface, RFR rfr, DateTime now)
         {
             if (index == null) throw new ArgumentNullException(nameof(index));
             if (volSurface == null) throw new ArgumentNullException(nameof(volSurface));
@@ -72,7 +72,7 @@ namespace MarketData
             {
                 var indexSnapshot = index.GetSnapshot();
                 double timeToExpiry = index.Calendar.GetYearFraction(now, _callOption.Expiry);
-                double forwardPrice = BenchmarkFuture != null ? BenchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
+                double forwardPrice = forwardCurve.GetForwardPrice(timeToExpiry);
 
                 // Update Greeks
                 _callGreeks = new OptionGreeks(_callOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);

@@ -421,8 +421,8 @@ namespace Server
             );
 
             var filteredOptions = options.Where(o =>
-                o.StrikePrice >= indexObj.GetSnapshot().ImpliedFuture * (1 + marketInfo.LowerStrikePct) &&
-                o.StrikePrice <= indexObj.GetSnapshot().ImpliedFuture * (1 + marketInfo.UpperStrikePct)
+                o.StrikePrice >= indexObj.GetSnapshot().IndexSpot * (1 + marketInfo.LowerStrikePct) &&
+                o.StrikePrice <= indexObj.GetSnapshot().IndexSpot * (1 + marketInfo.UpperStrikePct)
             ).ToList();
 
             var optionQuoteRequests = filteredOptions

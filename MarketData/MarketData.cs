@@ -46,6 +46,7 @@ namespace MarketData
         private readonly Dictionary<string, Future> _futuresByTradingSymbol;
         private readonly Dictionary<double, OptionChainElement> _optionChainByStrike;
         private readonly Dictionary<uint, FutureElement> _futureElements;
+        private ForwardCurve? _forwardCurve;
         private readonly object _snapshotLock = new();
         private AtomicMarketSnap _atomicSnapshot = null!;
         private readonly IGreeksCalculator _greeksCalculator;
@@ -105,8 +106,7 @@ namespace MarketData
                 throw new ArgumentException($"Volatility model '{volatilityModel}' is not supported yet.");
             }
 
-            IParametricModelSurface volSurface = CreateVolatilitySurface(OICutoff);
-
+            // === Create futures and elements first ===
             foreach (var future in futuresList)
             {
                 if (_futuresByToken.ContainsKey(future.Token))
@@ -117,23 +117,55 @@ namespace MarketData
 
                 _futuresByToken.Add(future.Token, future);
                 _futuresByTradingSymbol.Add(future.TradingSymbol, future);
-                _futureElements.Add(future.Token, new FutureElement(future, _index, _bUseMktFuture, volSurface, _rfr, now, _greeksCalculator));
+                _futureElements.Add(future.Token, new FutureElement(future, _index, _bUseMktFuture, null, _rfr, now, _greeksCalculator));
             }
 
-            _optionChainByStrike = ValidateAndCreateOptionChain(optionsList, now, volSurface, _greeksCalculator)
+            // === Build ForwardCurve once ===
+            ForwardCurve? forwardCurve = null;
+            try
+            {
+                var futureDetails = _futureElements.Values
+                    .Select(fe => new FutureDetailDTO(
+                        fe.Future.GetSnapshot(), fe.FutureGreeks, fe.FutureSpreads))
+                    .ToList();
+
+                if (futureDetails.Count > 0)
+                {
+                    forwardCurve = ForwardCurve.BuildFromFutureDetails(
+                        spot: _index.GetSnapshot().IndexSpot,
+                        divYield: _index.GetSnapshot().DivYield,
+                        futureDetails: futureDetails,
+                        calendar: _index.Calendar,
+                        snapshotTime: _initializationTime,
+                        interpolation: InterpolationMethod.Spline);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Failed to build ForwardCurve: {ex.Message}");
+                forwardCurve = null;
+            }
+
+            _forwardCurve = forwardCurve;
+
+            IParametricModelSurface volSurface = CreateVolatilitySurface(OICutoff, _forwardCurve);
+
+            
+
+            _optionChainByStrike = ValidateAndCreateOptionChain(optionsList, now, volSurface, _forwardCurve, _greeksCalculator)
             .ToDictionary(
             element => element.Strike,
             element => element
             );
 
-            UpdateAtomicSnapshot(volSurface);
+            UpdateAtomicSnapshot(volSurface, _forwardCurve);
 
             // Start background updater to process price updates
             StartBackgroundUpdater();
 
         }
 
-        private IParametricModelSurface CreateVolatilitySurface(double OICutoff)
+        private IParametricModelSurface CreateVolatilitySurface(double OICutoff, ForwardCurve? forwardCurve = null)
         {
             var indexSnapshot = _index.GetSnapshot();
             var expiry = _optionsByToken.Values.First().Expiry;
@@ -153,7 +185,9 @@ namespace MarketData
                 .Select(s => (s.Strike, Price: s.Mid, s.OI))
                 .ToList();
 
-            double forwardPrice = _benchmarkFuture != null ? _benchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
+            double forwardPrice = forwardCurve != null
+                ? forwardCurve.GetForwardPrice(timeToExpiry)
+                : throw new InvalidOperationException("ForwardCurve is required to create volatility surface.");
 
             IParametricModelSurface volSurface;
             switch (_volatilityModel)
@@ -173,7 +207,7 @@ namespace MarketData
             return volSurface;
         }
 
-        private void UpdateAtomicSnapshot(IParametricModelSurface volSurface)
+        private void UpdateAtomicSnapshot(IParametricModelSurface volSurface, ForwardCurve? forwardCurve = null)
         {
             lock (_snapshotLock)
             {
@@ -198,35 +232,14 @@ namespace MarketData
                 var futureElements = _futureElements.Values
                     .ToImmutableArray();
 
-                double forwardPrice = _benchmarkFuture != null ? _benchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
+                //double forwardPrice = _benchmarkFuture != null ? _benchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
 
-                // Build ForwardCurve (optional). We try to construct it from available future elements.
-                // If no valid futures available or BuildFromFutureDetails throws, we keep forwardCurve == null
-                ForwardCurve? forwardCurve = null;
-                try
-                {
-                    // Convert FutureElement collection to the small FutureDetail objects expected by the builder.
-                    // FutureDetail has constructor: FutureDetail(FutureSnapshot snapshot, FutureGreeks greeks, FutureSpreads spreads)
-                    var futureDetailsForCurve = futureElements
-                        .Select(fe => new FutureDetailDTO(fe.Future.GetSnapshot(), fe.FutureGreeks, fe.FutureSpreads))
-                        .ToList();
-
-                    if (futureDetailsForCurve.Count > 0)
-                    {
-                        forwardCurve = ForwardCurve.BuildFromFutureDetails(
-                            spot: indexSnapshot.IndexSpot,
-                            divYield: indexSnapshot.DivYield,
-                            futureDetails: futureDetailsForCurve,
-                            calendar: _index.Calendar,
-                            snapshotTime: _initializationTime,
-                            interpolation: InterpolationMethod.Spline);
-                    }
-                }
-                catch (ArgumentException)
-                {
-                    // Per policy 2->C we do not fail the snapshot if curve cannot be built. Keep forwardCurve == null.
-                    forwardCurve = null;
-                }
+                
+                // Use forward curve to derive forwardPrice (for current expiry)
+                double forwardPrice = forwardCurve != null
+                    ? forwardCurve.GetForwardPrice(
+                        _index.Calendar.GetYearFraction(_initializationTime, expiry))
+                    : throw new InvalidOperationException("ForwardCurve is required to get forward price.");
 
                 // Create the atomic snapshot and include the forwardCurve (may be null)
                 _atomicSnapshot = new AtomicMarketSnap(
@@ -247,7 +260,7 @@ namespace MarketData
             }
         }
 
-        private List<OptionChainElement> ValidateAndCreateOptionChain(List<Option> options, DateTime now, IParametricModelSurface volSurface, IGreeksCalculator greeksCalculator)
+        private List<OptionChainElement> ValidateAndCreateOptionChain(List<Option> options, DateTime now, IParametricModelSurface volSurface, ForwardCurve forwardCurve, IGreeksCalculator greeksCalculator)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
             if (!options.Any()) throw new ArgumentException("Options collection cannot be empty");
@@ -271,7 +284,7 @@ namespace MarketData
                 .Select(g => new OptionChainElement(
                     g.Value.Call ?? throw new InvalidOperationException($"Missing call option at strike {g.Key}"),
                     g.Value.Put ?? throw new InvalidOperationException($"Missing put option at strike {g.Key}"),
-                    _index, _benchmarkFuture,
+                    _index, forwardCurve,
                     volSurface,
                     _rfr,
                     now,
@@ -398,6 +411,34 @@ namespace MarketData
                         }
                     });
 
+                    // === Build ForwardCurve once ===
+                    ForwardCurve? forwardCurve = null;
+                    try
+                    {
+                        var futureDetails = _futureElements.Values
+                            .Select(fe => new FutureDetailDTO(
+                                fe.Future.GetSnapshot(), fe.FutureGreeks, fe.FutureSpreads))
+                            .ToList();
+
+                        if (futureDetails.Count > 0)
+                        {
+                            forwardCurve = ForwardCurve.BuildFromFutureDetails(
+                                spot: _index.GetSnapshot().IndexSpot,
+                                divYield: _index.GetSnapshot().DivYield,
+                                futureDetails: futureDetails,
+                                calendar: _index.Calendar,
+                                snapshotTime: _initializationTime,
+                                interpolation: InterpolationMethod.Spline);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ Failed to build ForwardCurve: {ex.Message}");
+                        forwardCurve = null;
+                    }
+
+                    _forwardCurve = forwardCurve;
+
                     // Step 6: Create Volatility Surface
                     IParametricModelSurface volSurface = CreateVolatilitySurface(_OICutoff);
 
@@ -405,7 +446,7 @@ namespace MarketData
                     Parallel.ForEach(_optionChainByStrike.Values, chainElement =>
                     {
                         chainElement.UpdateGreeks(
-                            index: _index, BenchmarkFuture: _benchmarkFuture,
+                            index: _index,  forwardCurve: _forwardCurve!,
                             volSurface: volSurface,
                             rfr: _rfr,
                             now: now

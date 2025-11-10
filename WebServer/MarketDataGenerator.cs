@@ -41,8 +41,8 @@ namespace Server
             RFR rfrObject = new RFR(rfr);
 
             List<NFOInstrument> filteredOptions = options.Where(o =>
-                o.StrikePrice >= indexObj.GetSnapshot().ImpliedFuture * (1 + _marketInfo.LowerStrikePct) &&
-                o.StrikePrice <= indexObj.GetSnapshot().ImpliedFuture * (1 + _marketInfo.UpperStrikePct)
+                o.StrikePrice >= indexObj.GetSnapshot().IndexSpot * (1 + _marketInfo.LowerStrikePct) &&
+                o.StrikePrice <= indexObj.GetSnapshot().IndexSpot * (1 + _marketInfo.UpperStrikePct)
             ).ToList();
 
             List<Option> optionList = filteredOptions.Select(nfo =>
