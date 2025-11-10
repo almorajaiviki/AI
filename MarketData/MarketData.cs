@@ -199,6 +199,36 @@ namespace MarketData
                     .ToImmutableArray();
 
                 double forwardPrice = _benchmarkFuture != null ? _benchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
+
+                // Build ForwardCurve (optional). We try to construct it from available future elements.
+                // If no valid futures available or BuildFromFutureDetails throws, we keep forwardCurve == null
+                ForwardCurve? forwardCurve = null;
+                try
+                {
+                    // Convert FutureElement collection to the small FutureDetail objects expected by the builder.
+                    // FutureDetail has constructor: FutureDetail(FutureSnapshot snapshot, FutureGreeks greeks, FutureSpreads spreads)
+                    var futureDetailsForCurve = futureElements
+                        .Select(fe => new FutureDetailDTO(fe.Future.GetSnapshot(), fe.FutureGreeks, fe.FutureSpreads))
+                        .ToList();
+
+                    if (futureDetailsForCurve.Count > 0)
+                    {
+                        forwardCurve = ForwardCurve.BuildFromFutureDetails(
+                            spot: indexSnapshot.IndexSpot,
+                            divYield: indexSnapshot.DivYield,
+                            futureDetails: futureDetailsForCurve,
+                            calendar: _index.Calendar,
+                            snapshotTime: _initializationTime,
+                            interpolation: InterpolationMethod.Spline);
+                    }
+                }
+                catch (ArgumentException)
+                {
+                    // Per policy 2->C we do not fail the snapshot if curve cannot be built. Keep forwardCurve == null.
+                    forwardCurve = null;
+                }
+
+                // Create the atomic snapshot and include the forwardCurve (may be null)
                 _atomicSnapshot = new AtomicMarketSnap(
                     _initializationTime,
                     expiry, // Use variable
@@ -212,7 +242,8 @@ namespace MarketData
                     futureElements, // New parameter
                     _index.Calendar,
                     _index.TradingSymbol,
-                    volSurface); // <-- Pass the new surface
+                    forwardCurve,   // <-- pass forwardCurve here
+                    volSurface);
             }
         }
 

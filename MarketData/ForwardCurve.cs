@@ -26,7 +26,7 @@ namespace MarketData
         private readonly NaturalCubicSpline? _rateSpline; // null when not used
         private readonly bool _useSpline;
 
-        private ForwardCurve(
+        internal ForwardCurve(
             double spot,
             double divYield,
             double[] knotTimes,

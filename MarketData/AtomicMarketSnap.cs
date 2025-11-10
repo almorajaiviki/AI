@@ -21,6 +21,15 @@ namespace MarketData
         private readonly double _divYield;
         private readonly IParametricModelSurface _volSurface;
         private readonly MarketCalendar _calendar;
+        // --- inside namespace MarketData, in AtomicMarketSnap.cs ---
+        // Add this private field near the other private readonly fields at top of class:
+        private readonly ForwardCurve? _forwardCurve;
+
+        // Add a public read-only accessor (near your other public properties):
+        /// <summary>
+        /// Forward curve built from the snapshot's futures and spot (may be null if not built).
+        /// </summary>
+        public ForwardCurve? ForwardCurve => _forwardCurve;
 
         // Option and Future stores
         private readonly ImmutableDictionary<uint, OptionSnapshot> _optionsByToken;
@@ -31,6 +40,12 @@ namespace MarketData
 
         public ImmutableDictionary<uint, OptionSnapshot> OptionsByToken => _optionsByToken;
 
+        // === Replace the existing AtomicMarketSnap constructor signature and body with the following ===
+        //
+        // previous signature ended with: string indexTradingSymbol, IParametricModelSurface volSurface
+        //
+        // New signature inserts ForwardCurve? forwardCurve before volSurface (so we can keep
+        // change-site localized in MarketData.UpdateAtomicSnapshot)
         public AtomicMarketSnap(
             DateTime initializationTime,
             DateTime expiry,
@@ -44,6 +59,7 @@ namespace MarketData
             ImmutableArray<FutureElement> futureElements,
             MarketCalendar calendar,
             string indexTradingSymbol,
+            ForwardCurve? forwardCurve,             // <-- new parameter added here
             IParametricModelSurface volSurface)
         {
             // === Validation ===
@@ -73,6 +89,9 @@ namespace MarketData
             _calendar = calendar;
             _volSurface = volSurface ?? throw new ArgumentNullException(nameof(volSurface));
 
+            // store the forward curve (may be null if callers didn't build one)
+            _forwardCurve = forwardCurve;
+
             var (byToken, bySymbol, byStrike) = BuildOptionStores(optionSnapshots, greeks);
             _optionsByToken = byToken;
             _optionsByTradingSymbol = bySymbol;
@@ -82,7 +101,7 @@ namespace MarketData
             _futuresByToken = futuresByToken;
             _futuresByTradingSymbol = futuresByTradingSymbol;
         }
-
+        
         // === Core Properties ===
         public string IndexTradingSymbol => _indexTradingSymbol;
         public DateTime InitializationTime => _initializationTime;
@@ -211,7 +230,8 @@ namespace MarketData
                 SnapTime = _initializationTime,
                 OptionPairs = pairs,
                 Futures = _futuresByToken.Values.ToArray(),
-                VolSurface = _volSurface.ToDTO()
+                VolSurface = _volSurface.ToDTO(),
+                ForwardCurve = _forwardCurve != null ? ForwardCurveDTO.FromForwardCurve(_forwardCurve) : null
             };
         }
 
@@ -240,6 +260,16 @@ namespace MarketData
             if (dto.VolSurface == null)
                 throw new ArgumentNullException(nameof(dto.VolSurface), "VolSurfaceDTO is required to rebuild AtomicMarketSnap.");
             _volSurface = VolSurface.FromDTO(dto.VolSurface); // assume VolSurface.FromDTO(VolSurfaceDTO dto)
+
+            // === Rebuild ForwardCurve ===
+            if (dto.ForwardCurve != null)
+            {
+                _forwardCurve = dto.ForwardCurve.ToForwardCurve();
+            }
+            else
+            {
+                _forwardCurve = null;
+            }
 
             // === Rebuild options from OptionPairDTOs ===
             var optionSnapshots = new List<OptionSnapshot>();
@@ -364,6 +394,7 @@ namespace MarketData
         public OptionPairDTO[] OptionPairs { get; set; } = Array.Empty<OptionPairDTO>();
         public FutureDetailDTO[]? Futures { get; set; }
         public VolSurfaceDTO? VolSurface { get; set; }
+        public ForwardCurveDTO? ForwardCurve { get; set; }
     }
 
     public sealed class OptionPairDTO
@@ -418,4 +449,68 @@ namespace MarketData
             FutureSpreads = spreads;
         }
     }
+
+   
+    /// <summary>
+    /// Serializable representation of a ForwardCurve for persistence or data transfer.
+    /// Contains knot times (years), implied rates, spot, div yield, and interpolation mode.
+    /// </summary>
+    public sealed class ForwardCurveDTO
+    {
+        public double Spot { get; set; }
+        public double DivYield { get; set; }
+        public double[] KnotTimes { get; set; } = Array.Empty<double>();
+        public double[] ImpliedRates { get; set; } = Array.Empty<double>();
+        public string Interpolation { get; set; } = nameof(InterpolationMethod.Spline);
+
+        public ForwardCurveDTO() { }
+
+        public ForwardCurveDTO(
+            double spot,
+            double divYield,
+            double[] knotTimes,
+            double[] impliedRates,
+            InterpolationMethod interpolation)
+        {
+            Spot = spot;
+            DivYield = divYield;
+            KnotTimes = knotTimes ?? Array.Empty<double>();
+            ImpliedRates = impliedRates ?? Array.Empty<double>();
+            Interpolation = interpolation.ToString();
+        }
+
+        /// <summary>
+        /// Factory from ForwardCurve object.
+        /// </summary>
+        public static ForwardCurveDTO FromForwardCurve(ForwardCurve curve)
+        {
+            if (curve == null) throw new ArgumentNullException(nameof(curve));
+
+            return new ForwardCurveDTO(
+                curve.Spot,
+                curve.DivYield,
+                curve.KnotTimes.ToArray(),
+                curve.ImpliedRates.ToArray(),
+                curve.Interpolation);
+        }
+
+        /// <summary>
+        /// Rebuilds a ForwardCurve object from this DTO.
+        /// </summary>
+        public ForwardCurve ToForwardCurve()
+        {
+            // Try parse interpolation mode safely
+            InterpolationMethod method = InterpolationMethod.Spline;
+            if (!Enum.TryParse(Interpolation, true, out method))
+                method = InterpolationMethod.Spline;
+
+            return new ForwardCurve(
+                spot: Spot,
+                divYield: DivYield,
+                knotTimes: KnotTimes ?? Array.Empty<double>(),
+                impliedRates: ImpliedRates ?? Array.Empty<double>(),
+                interpolation: method);
+        }
+    }
+
 }
