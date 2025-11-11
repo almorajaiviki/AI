@@ -78,7 +78,7 @@ namespace Server
             return new MarketData.MarketData(
                 now,
                 indexObj,
-                rfrObject, OICutoff, bUseMktFuture,
+                rfrObject, OICutoff,
                 optionList,
                 futureList,
                 volatilityModel,

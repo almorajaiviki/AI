@@ -27,7 +27,7 @@ namespace QuantitativeAnalytics
             ProductType productType,
             bool isCall,
             double spot,
-            double forwardPrice, bool bIsFutureBenchmark,
+            double forwardPrice,
             double strike,
             double timeToExpiry,
             double riskFreeRate,
@@ -37,11 +37,8 @@ namespace QuantitativeAnalytics
             switch (productType)
             {
                 case ProductType.Future:
-                    if (bIsFutureBenchmark)
-                        return forwardPrice; // For the benchmark future, NPV is its price
-                    else    
-                        // Futures fair value = Spot * exp[(r - q) * T]
-                        return spot * Math.Exp((riskFreeRate - dividendYield) * timeToExpiry);
+                    // Futures fair value = Spot * exp[(r - q) * T]
+                    return forwardPrice;
 
                 case ProductType.Option:
                     if (volSurface == null)

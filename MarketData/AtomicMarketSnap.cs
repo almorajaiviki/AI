@@ -333,7 +333,7 @@ namespace MarketData
                     var snap = f.FutureSnapshot;
                     var fut = new Future(snap.TradingSymbol, snap.Token, snap.Expiry, dto.SnapTime, new RFR(dto.RiskFreeRate), snap.LTP, snap.Bid, snap.Ask, snap.OI);
                     var index = new Index(dto.Index, 0, dto.Spot, _calendar, new RFR(dto.RiskFreeRate), dto.DivYield, dto.Expiry, dto.SnapTime);
-                    var futElem = new FutureElement(fut, index, false, _volSurface, new RFR(dto.RiskFreeRate), dto.SnapTime, _greeksCalculator);
+                    var futElem = new FutureElement(fut, index, _volSurface, new RFR(dto.RiskFreeRate), dto.SnapTime, _greeksCalculator);
                     futureElements.Add(futElem);
                 }
             }

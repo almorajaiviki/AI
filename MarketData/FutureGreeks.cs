@@ -15,7 +15,7 @@ namespace MarketData
 
         public FutureGreeks(
             FutureSnapshot futureSnapshot,
-            double spot, bool bUseMktFuture,
+            double spot,
             double riskFreeRate,
             double dividendYield,
             double timeToExpiry,
@@ -30,28 +30,28 @@ namespace MarketData
             var productType = ProductType.Future;
 
             NPV = greeksCalculator.NPV(
-                productType, isCall, spot, futureSnapshot.Mid, bUseMktFuture, strike,
+                productType, isCall, spot, futureSnapshot.Mid, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Delta = greeksCalculator.Delta(
-                productType, isCall, spot, futureSnapshot.Mid, bUseMktFuture, strike,
+                productType, isCall, spot, futureSnapshot.Mid, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Gamma = greeksCalculator.Gamma(
-                productType, isCall, spot, futureSnapshot.Mid, bUseMktFuture, strike,
+                productType, isCall, spot, futureSnapshot.Mid, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Vega = greeksCalculator.VegaByParam(
-                productType, isCall, spot, futureSnapshot.Mid, bUseMktFuture, strike,
+                productType, isCall, spot, futureSnapshot.Mid, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface)
                 .ToImmutableArray();
 
             Rho = greeksCalculator.Rho(
-                productType, isCall, spot, futureSnapshot.Mid, bUseMktFuture, strike,
+                productType, isCall, spot, futureSnapshot.Mid, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Theta = greeksCalculator.Theta(
-                productType, isCall, spot, futureSnapshot.Mid, bUseMktFuture, strike,
+                productType, isCall, spot, futureSnapshot.Mid, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
         }
     }

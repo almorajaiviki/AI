@@ -15,7 +15,7 @@ namespace MarketData
         public FutureSpreads FutureSpreads => _futureSpreads;
         public string TradingSymbol => _future.TradingSymbol;
 
-        public FutureElement(Future future, Index index, bool bUseMktFuture, IParametricModelSurface volSurface, RFR rfr, DateTime now, IGreeksCalculator greeksCalculator)
+        public FutureElement(Future future, Index index, IParametricModelSurface volSurface, RFR rfr, DateTime now, IGreeksCalculator greeksCalculator)
         {
             // Input validation
             if (future == null) throw new ArgumentNullException(nameof(future));
@@ -32,7 +32,7 @@ namespace MarketData
 
             _futureGreeks = new FutureGreeks(
                 futureSnapshot,
-                indexSnapshot.IndexSpot, bUseMktFuture, // spot
+                indexSnapshot.IndexSpot, // spot
                 rfr.Value,               // riskFreeRate
                 indexSnapshot.DivYield,  // dividendYield
                 timeToExpiry,
@@ -43,7 +43,7 @@ namespace MarketData
         }
 
         // The UpdateGreeks method needs to be updated to create new instances
-        public void UpdateGreeks(Index index, bool bUseMktFuture, IParametricModelSurface volSurface, RFR rfr, DateTime now, IGreeksCalculator greeksCalculator)
+        public void UpdateGreeks(Index index, IParametricModelSurface volSurface, RFR rfr, DateTime now, IGreeksCalculator greeksCalculator)
         {
             if (index == null) throw new ArgumentNullException(nameof(index));
             if (volSurface == null) throw new ArgumentNullException(nameof(volSurface));
@@ -58,7 +58,7 @@ namespace MarketData
 
                 _futureGreeks = new FutureGreeks(
                     futureSnapshot,
-                    indexSnapshot.IndexSpot, bUseMktFuture, // spot
+                    indexSnapshot.IndexSpot, // spot
                     rfr.Value,               // riskFreeRate
                     indexSnapshot.DivYield,  // dividendYield
                     timeToExpiry,

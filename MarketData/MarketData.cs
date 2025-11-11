@@ -38,8 +38,6 @@ namespace MarketData
         private readonly Index _index;
         private readonly RFR _rfr;
         private readonly double _OICutoff;
-        private readonly bool _bUseMktFuture;
-        private readonly Future? _benchmarkFuture;
         private readonly Dictionary<uint, Option> _optionsByToken;
         private readonly Dictionary<string, Option> _optionsByTradingSymbol;
         private readonly Dictionary<uint, Future> _futuresByToken;
@@ -57,7 +55,7 @@ namespace MarketData
 
         public AtomicMarketSnap AtomicSnapshot => _atomicSnapshot;
 
-        public MarketData(DateTime now, Index index, RFR rfr, double OICutoff, bool bUseMktFuture, IEnumerable<Option> options, IEnumerable<Future> futures, VolatilityModel volatilityModel, CancellationToken token)
+        public MarketData(DateTime now, Index index, RFR rfr, double OICutoff, IEnumerable<Option> options, IEnumerable<Future> futures, VolatilityModel volatilityModel, CancellationToken token)
         {
             if (now == default)
                 throw new ArgumentException("Invalid initialization time", nameof(now));
@@ -77,10 +75,7 @@ namespace MarketData
             _futuresByTradingSymbol = new Dictionary<string, Future>();
             _futureElements = new Dictionary<uint, FutureElement>();
             _OICutoff = OICutoff;
-            _bUseMktFuture = bUseMktFuture;
             _token = token;   // ✅ store external token
-
-            _benchmarkFuture = _bUseMktFuture ? futures.FirstOrDefault(f => f.Expiry.Date == options.First().Expiry.Date) : null;
 
             var optionsList = options?.ToList() ?? throw new ArgumentNullException(nameof(options));
             var futuresList = futures?.ToList() ?? throw new ArgumentNullException(nameof(futures));
@@ -117,7 +112,7 @@ namespace MarketData
 
                 _futuresByToken.Add(future.Token, future);
                 _futuresByTradingSymbol.Add(future.TradingSymbol, future);
-                _futureElements.Add(future.Token, new FutureElement(future, _index, _bUseMktFuture, null, _rfr, now, _greeksCalculator));
+                _futureElements.Add(future.Token, new FutureElement(future, _index, null, _rfr, now, _greeksCalculator));
             }
 
             // === Build ForwardCurve once ===
@@ -231,8 +226,6 @@ namespace MarketData
                 // Get fresh future elements
                 var futureElements = _futureElements.Values
                     .ToImmutableArray();
-
-                //double forwardPrice = _benchmarkFuture != null ? _benchmarkFuture.GetSnapshot().Mid : indexSnapshot.ImpliedFuture;
 
                 
                 // Use forward curve to derive forwardPrice (for current expiry)
@@ -457,7 +450,7 @@ namespace MarketData
                     Parallel.ForEach(_futureElements.Values, futureElement =>
                     {
                         futureElement.UpdateGreeks(
-                            index: _index, bUseMktFuture: _bUseMktFuture,
+                            index: _index,
                             volSurface: volSurface,
                             rfr: _rfr,
                             now: now,

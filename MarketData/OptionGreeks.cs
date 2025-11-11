@@ -36,28 +36,28 @@ namespace MarketData
 
             //for options, the decision to use benchmark future or spot is made in MarketData class
             NPV = greeksCalculator.NPV(
-                productType, isCall, spot, impliedFuture, true, strike,
+                productType, isCall, spot, impliedFuture, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Delta = greeksCalculator.Delta(
-                productType, isCall, spot, impliedFuture, true, strike,
+                productType, isCall, spot, impliedFuture, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Gamma = greeksCalculator.Gamma(
-                productType, isCall, spot, impliedFuture, true, strike,
+                productType, isCall, spot, impliedFuture, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Vega = greeksCalculator.VegaByParam(
-                productType, isCall, spot, impliedFuture, true, strike,
+                productType, isCall, spot, impliedFuture, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface)
                 .ToImmutableArray();
 
             Rho = greeksCalculator.Rho(
-                productType, isCall, spot, impliedFuture, true, strike,
+                productType, isCall, spot, impliedFuture, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
 
             Theta = greeksCalculator.Theta(
-                productType, isCall, spot, impliedFuture, true, strike,
+                productType, isCall, spot, impliedFuture, strike,
                 riskFreeRate, dividendYield, timeToExpiry, volSurface);
         }
     }
