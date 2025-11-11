@@ -42,7 +42,9 @@ namespace MarketData
         private readonly Dictionary<string, Option> _optionsByTradingSymbol;
         private readonly Dictionary<uint, Future> _futuresByToken;
         private readonly Dictionary<string, Future> _futuresByTradingSymbol;
-        private readonly Dictionary<double, OptionChainElement> _optionChainByStrike;
+        //private readonly Dictionary<double, OptionChainElement> _optionChainByStrikeExpiry;
+        // new (multi-expiry)
+        private readonly Dictionary<DateTime, Dictionary<double, OptionChainElement>> _optionChainByStrikeExpiry;
         private readonly Dictionary<uint, FutureElement> _futureElements;
         private ForwardCurve? _forwardCurve;
         private readonly object _snapshotLock = new();
@@ -147,11 +149,14 @@ namespace MarketData
 
             
 
-            _optionChainByStrike = ValidateAndCreateOptionChain(optionsList, now, volSurface, _forwardCurve, _greeksCalculator)
-            .ToDictionary(
-            element => element.Strike,
-            element => element
-            );
+            var chainsByExpiry = ValidateAndCreateOptionChains(optionsList, now, volSurface, _forwardCurve!, _greeksCalculator);
+
+            // store in field
+            _optionChainByStrikeExpiry = chainsByExpiry
+                .ToDictionary(
+                    kvp => kvp.Key,                              // expiry
+                    kvp => kvp.Value.ToDictionary(e => e.Strike, e => e) // strike -> element
+                );
 
             UpdateAtomicSnapshot(volSurface, _forwardCurve);
 
@@ -214,12 +219,13 @@ namespace MarketData
                     .Select(o => o.GetSnapshot())
                     .ToImmutableArray();
 
-                // Reuse greeks from existing chain elements
-                var greeks = _optionChainByStrike.Values
-                    .SelectMany(ce => new[]
+                // Reuse greeks from existing chain elements (multi-expiry aware)
+                var greeks = _optionChainByStrikeExpiry
+                    .SelectMany(expiryKvp => expiryKvp.Value.Values) // flatten inner dictionaries
+                    .SelectMany(chainElement => new[]
                     {
-                        ce.CallGreeks,
-                        ce.PutGreeks
+                        chainElement.CallGreeks,
+                        chainElement.PutGreeks
                     })
                     .ToImmutableArray();
 
@@ -253,38 +259,70 @@ namespace MarketData
             }
         }
 
-        private List<OptionChainElement> ValidateAndCreateOptionChain(List<Option> options, DateTime now, IParametricModelSurface volSurface, ForwardCurve forwardCurve, IGreeksCalculator greeksCalculator)
+        private Dictionary<DateTime, List<OptionChainElement>> ValidateAndCreateOptionChains(
+            List<Option> options,
+            DateTime now,
+            IParametricModelSurface volSurface,
+            ForwardCurve forwardCurve,
+            IGreeksCalculator greeksCalculator)
         {
-            if (options == null) throw new ArgumentNullException(nameof(options));
-            if (!options.Any()) throw new ArgumentException("Options collection cannot be empty");
-            if (options.Count % 2 != 0) throw new ArgumentException("Must have even number of options (call/put pairs)");
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            if (!options.Any())
+                throw new ArgumentException("Options collection cannot be empty", nameof(options));
+            if (options.Count % 2 != 0)
+                Console.WriteLine("⚠️ Warning: Options list does not have even number of entries (missing call/put pairs possible).");
 
-            var firstExpiry = options[0].Expiry;
-            if (options.Any(o => o.Expiry != firstExpiry))
-                throw new ArgumentException("All options must have the same expiry");
+            // === Group by expiry ===
+            var optionsByExpiry = options
+                .GroupBy(o => o.Expiry)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-            var strikeGroups = options
-                .GroupBy(o => o.Strike)
-                .ToDictionary(
-                    g => g.Key,
-                    g => (
-                        Call: g.SingleOrDefault(o => o.OptionType == OptionType.CE),
-                        Put: g.SingleOrDefault(o => o.OptionType == OptionType.PE)
-                    ));
+            var result = new Dictionary<DateTime, List<OptionChainElement>>();
 
-            return strikeGroups
-                .OrderBy(g => g.Key)
-                .Select(g => new OptionChainElement(
-                    g.Value.Call ?? throw new InvalidOperationException($"Missing call option at strike {g.Key}"),
-                    g.Value.Put ?? throw new InvalidOperationException($"Missing put option at strike {g.Key}"),
-                    _index, forwardCurve,
-                    volSurface,
-                    _rfr,
-                    now,
-                    greeksCalculator))
-                .ToList();
+            foreach (var (expiry, optionList) in optionsByExpiry)
+            {
+                double tte = _index.Calendar.GetYearFraction(now, expiry);
+                double forward = forwardCurve.GetForwardPrice(tte);
+
+                // --- group by strike within expiry ---
+                var strikeGroups = optionList
+                    .GroupBy(o => o.Strike)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => (
+                            Call: g.SingleOrDefault(o => o.OptionType == OptionType.CE),
+                            Put: g.SingleOrDefault(o => o.OptionType == OptionType.PE)
+                        ));
+
+                var chainElements = strikeGroups
+                    .OrderBy(g => g.Key)
+                    .Select(g =>
+                    {
+                        if (g.Value.Call == null || g.Value.Put == null)
+                        {
+                            Console.WriteLine($"⚠️ Missing call/put pair at strike {g.Key} for expiry {expiry:dd-MMM}");
+                            return null;
+                        }
+
+                        return new OptionChainElement(
+                            g.Value.Call,
+                            g.Value.Put,
+                            _index,
+                            forwardCurve,
+                            volSurface,   // shared 2D surface
+                            _rfr,
+                            now,
+                            greeksCalculator);
+                    })
+                    .Where(e => e != null)
+                    .ToList()!;
+
+                result[expiry] = chainElements;
+            }
+
+            return result;
         }
-
         public void HandlePriceUpdate(PriceUpdate update)
         {
             // Validate token exists
@@ -435,16 +473,25 @@ namespace MarketData
                     // Step 6: Create Volatility Surface
                     IParametricModelSurface volSurface = CreateVolatilitySurface(_OICutoff);
 
-                    // Step 7: Parallel Greek updates for options
-                    Parallel.ForEach(_optionChainByStrike.Values, chainElement =>
+                    // Step 7: Parallel Greek updates for options (multi-expiry aware)
+                    foreach (var (expiry, chainByStrike) in _optionChainByStrikeExpiry)
                     {
-                        chainElement.UpdateGreeks(
-                            index: _index,  forwardCurve: _forwardCurve!,
-                            volSurface: volSurface,
-                            rfr: _rfr,
-                            now: now
-                        );
-                    });
+                        double tte = _index.Calendar.GetYearFraction(now, expiry);
+                        double forward = _forwardCurve != null
+                            ? _forwardCurve.GetForwardPrice(tte)
+                            : _index.GetSnapshot().IndexSpot; // fallback if no curve
+
+                        Parallel.ForEach(chainByStrike.Values, chainElement =>
+                        {
+                            chainElement.UpdateGreeks(
+                                index: _index,
+                                forwardCurve: _forwardCurve!,
+                                volSurface: volSurface,
+                                rfr: _rfr,
+                                now: now
+                            );
+                        });
+                    }
 
                     // Step 8: Parallel Greek updates for futures
                     Parallel.ForEach(_futureElements.Values, futureElement =>

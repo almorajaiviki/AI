@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using CalendarLib;
 using QuantitativeAnalytics;
 using InstrumentStatic;
+using System.Linq;
 
 namespace MarketData
 {
@@ -34,7 +35,10 @@ namespace MarketData
         // Option and Future stores
         private readonly ImmutableDictionary<uint, OptionSnapshot> _optionsByToken;
         private readonly ImmutableDictionary<string, OptionSnapshot> _optionsByTradingSymbol;
-        private readonly ImmutableDictionary<double, OptionPair> _optionChainElements;
+        //private readonly ImmutableDictionary<double, OptionPair> _optionChainElements;
+        // === Options organized by expiry -> strike ===
+        private readonly ImmutableDictionary<DateTime, ImmutableDictionary<double, OptionPair>> _optionChainsByExpiry;
+        public ImmutableDictionary<DateTime, ImmutableDictionary<double, OptionPair>> OptionChainsByExpiry => _optionChainsByExpiry;
         private readonly ImmutableDictionary<uint, FutureDetailDTO> _futuresByToken;
         private readonly ImmutableDictionary<string, FutureDetailDTO> _futuresByTradingSymbol;
 
@@ -92,10 +96,10 @@ namespace MarketData
             // store the forward curve (may be null if callers didn't build one)
             _forwardCurve = forwardCurve;
 
-            var (byToken, bySymbol, byStrike) = BuildOptionStores(optionSnapshots, greeks);
+            var (byToken, bySymbol, byExpiry) = BuildOptionStoresByExpiry(optionSnapshots, greeks);
             _optionsByToken = byToken;
             _optionsByTradingSymbol = bySymbol;
-            _optionChainElements = byStrike;
+            _optionChainsByExpiry = byExpiry;
 
             var (futuresByToken, futuresByTradingSymbol) = BuildFutureStores(futureElements);
             _futuresByToken = futuresByToken;
@@ -113,39 +117,60 @@ namespace MarketData
         public uint Token => _token;
         public IParametricModelSurface VolSurface => _volSurface;
 
-        public ImmutableDictionary<double, OptionPair> OptionChainElements => _optionChainElements;
+        //public ImmutableDictionary<double, OptionPair> OptionChainElements => _optionChainElements;
         public ImmutableDictionary<uint, FutureDetailDTO> FuturesByToken => _futuresByToken;
+
+        public bool TryGetOptionPair(DateTime expiry, double strike, out OptionPair pair)
+        {
+            pair = default;
+            if (_optionChainsByExpiry.TryGetValue(expiry, out var byStrike))
+                return byStrike.TryGetValue(strike, out pair);
+            return false;
+        }
+
+        public IReadOnlyDictionary<double, OptionPair> GetChainForExpiry(DateTime expiry)
+            => _optionChainsByExpiry.TryGetValue(expiry, out var chain)
+                ? chain
+                : ImmutableDictionary<double, OptionPair>.Empty;
 
         // === Store Builders ===
         private static (
-            ImmutableDictionary<uint, OptionSnapshot>,
-            ImmutableDictionary<string, OptionSnapshot>,
-            ImmutableDictionary<double, OptionPair>
-        ) BuildOptionStores(ImmutableArray<OptionSnapshot> snapshots, ImmutableArray<OptionGreeks> greeks)
+            ImmutableDictionary<uint, OptionSnapshot> byToken,
+            ImmutableDictionary<string, OptionSnapshot> bySymbol,
+            ImmutableDictionary<DateTime, ImmutableDictionary<double, OptionPair>> byExpiry
+        )
+        BuildOptionStoresByExpiry(ImmutableArray<OptionSnapshot> snapshots, ImmutableArray<OptionGreeks> greeks)
         {
             var byToken = snapshots.ToDictionary(s => s.Token);
+            var bySymbol = byToken.Values.ToDictionary(s => s.TradingSymbol);
             var greeksByToken = greeks.ToDictionary(g => g.Token);
 
-            var strikeGroups = snapshots.GroupBy(s => s.Strike);
-            var strikePairs = ImmutableDictionary.CreateBuilder<double, OptionPair>();
+            var byExpiryBuilder = ImmutableDictionary.CreateBuilder<DateTime, ImmutableDictionary<double, OptionPair>>();
 
-            foreach (var group in strikeGroups)
+            foreach (var expiryGroup in snapshots.GroupBy(s => s.Expiry))
             {
-                var call = group.FirstOrDefault(x => x.OptionType == OptionType.CE);
-                var put = group.FirstOrDefault(x => x.OptionType == OptionType.PE);
-                if (call.Equals(default(OptionSnapshot)) || put.Equals(default(OptionSnapshot)))
-                    continue;
+                var strikeDict = ImmutableDictionary.CreateBuilder<double, OptionPair>();
 
-                if (!greeksByToken.TryGetValue(call.Token, out var callGreeks)) continue;
-                if (!greeksByToken.TryGetValue(put.Token, out var putGreeks)) continue;
+                foreach (var strikeGroup in expiryGroup.GroupBy(s => s.Strike))
+                {
+                    var call = strikeGroup.FirstOrDefault(x => x.OptionType == OptionType.CE);
+                    var put  = strikeGroup.FirstOrDefault(x => x.OptionType == OptionType.PE);
+                    if (call.Equals(default(OptionSnapshot)) || put.Equals(default(OptionSnapshot)))
+                        continue;
 
-                strikePairs[group.Key] = new OptionPair(call, put, callGreeks, putGreeks);
+                    if (!greeksByToken.TryGetValue(call.Token, out var callGreeks)) continue;
+                    if (!greeksByToken.TryGetValue(put.Token, out var putGreeks)) continue;
+
+                    strikeDict[strikeGroup.Key] = new OptionPair(call, put, callGreeks, putGreeks);
+                }
+
+                byExpiryBuilder[expiryGroup.Key] = strikeDict.ToImmutable();
             }
 
             return (
                 byToken.ToImmutableDictionary(),
-                byToken.Values.ToImmutableDictionary(s => s.TradingSymbol),
-                strikePairs.ToImmutable()
+                bySymbol.ToImmutableDictionary(),
+                byExpiryBuilder.ToImmutable()
             );
         }
 
@@ -170,54 +195,47 @@ namespace MarketData
         // === DTO Conversion ===
         public AtomicMarketSnapDTO ToDTO()
         {
-            var pairs = _optionChainElements.Values.Select(pair =>
-            {
-                var call = pair.Call;
-                var put = pair.Put;
-                var cg = pair.CallGreeks;
-                var pg = pair.PutGreeks;
-                var cs = pair.CallSpreads;
-                var ps = pair.PutSpreads;
+            var allPairs = _optionChainsByExpiry
+                .SelectMany(expiryKvp =>
+                    expiryKvp.Value.Values.Select(pair => new OptionPairDTO
+                    {
+                        strike = pair.Call.Strike,
+                        expiry = expiryKvp.Key,
+                        timestampUnixMs = new DateTimeOffset(_initializationTime).ToUnixTimeMilliseconds(),
 
-                return new OptionPairDTO
-                {
-                    strike = call.Strike,
-                    expiry = _expiry,
-                    timestampUnixMs = new DateTimeOffset(_initializationTime).ToUnixTimeMilliseconds(),
+                        // Call
+                        C_token = pair.Call.Token,
+                        C_bid = pair.Call.Bid,
+                        C_ask = pair.Call.Ask,
+                        C_ltp = pair.Call.LTP,
+                        C_oi = pair.Call.OI,
+                        C_iv = pair.CallGreeks.IV_Used,
+                        C_delta = pair.CallGreeks.Delta,
+                        C_gamma = pair.CallGreeks.Gamma,
+                        C_vega = pair.CallGreeks.Vega.Length > 0 ? pair.CallGreeks.Vega[0].Item2 : 0,
+                        C_theta = pair.CallGreeks.Theta,
+                        C_rho = pair.CallGreeks.Rho,
+                        C_npv = pair.CallGreeks.NPV,
+                        C_bidSpread = pair.CallSpreads.BidSpread,
+                        C_askSpread = pair.CallSpreads.AskSpread,
 
-                    // Call
-                    C_token = call.Token,
-                    C_bid = call.Bid,
-                    C_ask = call.Ask,
-                    C_ltp = call.LTP,
-                    C_oi = call.OI,
-                    C_iv = cg.IV_Used,
-                    C_delta = cg.Delta,
-                    C_gamma = cg.Gamma,
-                    C_vega = cg.Vega.Length > 0 ? cg.Vega[0].Item2 : 0,
-                    C_theta = cg.Theta,
-                    C_rho = cg.Rho,
-                    C_npv = cg.NPV,
-                    C_bidSpread = cs.BidSpread,
-                    C_askSpread = cs.AskSpread,
-
-                    // Put
-                    P_token = put.Token,
-                    P_bid = put.Bid,
-                    P_ask = put.Ask,
-                    P_ltp = put.LTP,
-                    P_oi = put.OI,
-                    P_iv = pg.IV_Used,
-                    P_delta = pg.Delta,
-                    P_gamma = pg.Gamma,
-                    P_vega = pg.Vega.Length > 0 ? pg.Vega[0].Item2 : 0,
-                    P_theta = pg.Theta,
-                    P_rho = pg.Rho,
-                    P_npv = pg.NPV,
-                    P_bidSpread = ps.BidSpread,
-                    P_askSpread = ps.AskSpread
-                };
-            }).ToArray();
+                        // Put
+                        P_token = pair.Put.Token,
+                        P_bid = pair.Put.Bid,
+                        P_ask = pair.Put.Ask,
+                        P_ltp = pair.Put.LTP,
+                        P_oi = pair.Put.OI,
+                        P_iv = pair.PutGreeks.IV_Used,
+                        P_delta = pair.PutGreeks.Delta,
+                        P_gamma = pair.PutGreeks.Gamma,
+                        P_vega = pair.PutGreeks.Vega.Length > 0 ? pair.PutGreeks.Vega[0].Item2 : 0,
+                        P_theta = pair.PutGreeks.Theta,
+                        P_rho = pair.PutGreeks.Rho,
+                        P_npv = pair.PutGreeks.NPV,
+                        P_bidSpread = pair.PutSpreads.BidSpread,
+                        P_askSpread = pair.PutSpreads.AskSpread
+                    }))
+                .ToArray();
 
             return new AtomicMarketSnapDTO
             {
@@ -226,9 +244,9 @@ namespace MarketData
                 ImpliedFuture = _impliedFuture,
                 RiskFreeRate = _riskFreeRate,
                 DivYield = _divYield,
-                Expiry = _expiry,
+                Expiry = _optionChainsByExpiry.Keys.Max(), // latest expiry (for reference)
                 SnapTime = _initializationTime,
-                OptionPairs = pairs,
+                OptionPairs = allPairs,
                 Futures = _futuresByToken.Values.ToArray(),
                 VolSurface = _volSurface.ToDTO(),
                 ForwardCurve = _forwardCurve != null ? ForwardCurveDTO.FromForwardCurve(_forwardCurve) : null
@@ -338,12 +356,12 @@ namespace MarketData
                 }
             }
 
-            // === Convert to Immutable and build internal stores ===
-            var (byToken, bySymbol, byStrike) =
-                BuildOptionStores(optionSnapshots.ToImmutableArray(), optionGreeks.ToImmutableArray());
+            // === Convert to Immutable and build internal stores (grouped by expiry) ===
+            var (byToken, bySymbol, byExpiry) =
+                BuildOptionStoresByExpiry(optionSnapshots.ToImmutableArray(), optionGreeks.ToImmutableArray());
             _optionsByToken = byToken;
             _optionsByTradingSymbol = bySymbol;
-            _optionChainElements = byStrike;
+            _optionChainsByExpiry = byExpiry;
 
             var (futuresByToken, futuresByTradingSymbol) =
                 BuildFutureStores(futureElements.ToImmutableArray());
