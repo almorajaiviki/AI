@@ -39,9 +39,4 @@
     <ProjectReference Include="../QuantitativeAnalytics/QuantitativeAnalytics.csproj" />
   </ItemGroup>
 
-
-  <ItemGroup>
-    <PackageReference Include="MessagePack" Version="1.7.1" />
-  </ItemGroup>
-
 </Project>

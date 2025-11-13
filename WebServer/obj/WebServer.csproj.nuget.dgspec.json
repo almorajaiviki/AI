@@ -494,12 +494,6 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "dependencies": {
-            "MessagePack": {
-              "target": "Package",
-              "version": "[1.7.1, )"
-            }
-          },
           "imports": [
             "net461",
             "net462",
