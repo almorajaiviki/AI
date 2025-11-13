@@ -207,7 +207,7 @@ namespace MarketData
             return volSurface;
         }
 
-        private void UpdateAtomicSnapshot(IParametricModelSurface volSurface, ForwardCurve? forwardCurve = null)
+        private void UpdateAtomicSnapshot(IParametricModelSurface volSurface, ForwardCurve? forwardCurve)
         {
             lock (_snapshotLock)
             {
@@ -471,7 +471,7 @@ namespace MarketData
                     _forwardCurve = forwardCurve;
 
                     // Step 6: Create Volatility Surface
-                    IParametricModelSurface volSurface = CreateVolatilitySurface(_OICutoff);
+                    IParametricModelSurface volSurface = CreateVolatilitySurface(_OICutoff, _forwardCurve);
 
                     // Step 7: Parallel Greek updates for options (multi-expiry aware)
                     foreach (var (expiry, chainByStrike) in _optionChainByStrikeExpiry)
@@ -506,7 +506,7 @@ namespace MarketData
                     });
 
                     // Step 9: Final snapshot update
-                    UpdateAtomicSnapshot(volSurface);
+                    UpdateAtomicSnapshot(volSurface,_forwardCurve);
 
                     // Step 10: Raise event with a thread-safe snapshot reference
                     OnMarketDataUpdated?.Invoke(_atomicSnapshot.ToDTO());
@@ -532,7 +532,7 @@ namespace MarketData
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Background updater error: {ex.Message}");
+                        Console.WriteLine($"Background updater error: {ex.Message} at {ex.StackTrace}");
                     }
                 }
 

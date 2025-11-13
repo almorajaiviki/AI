@@ -3,11 +3,9 @@
 /* ============================================================
    MarketData.js
    - Front-end client for displaying AtomicMarketSnapDTO data
-   - Keeps exactly one in-memory AMS (currentAMS)
-   - Allows saving the current AMS as a local .json file
+   - Now supports multiple expiries (one Option Chain table per expiry)
    ============================================================ */
 
-// === One authoritative in-memory AMS object ===
 let currentAMS = null;
 
 // === WebSocket connection for live streaming updates ===
@@ -17,7 +15,7 @@ socket.onmessage = function (event) {
     try {
         const newAMS = JSON.parse(event.data);
         updateMarketSnapshot(newAMS);
-        currentAMS = newAMS; // Replace global reference
+        currentAMS = newAMS;
     } catch (err) {
         console.error("WebSocket parse error:", err, event.data);
     }
@@ -41,12 +39,10 @@ window.addEventListener("load", async () => {
 
 // === Gracefully close socket before page unload ===
 window.addEventListener("beforeunload", function () {
-    if (socket.readyState === WebSocket.OPEN) {
-        socket.close();
-    }
+    if (socket.readyState === WebSocket.OPEN) socket.close();
 });
 
-// === Inject CSS for highlights and tables ===
+// === Inject CSS for tables and toolbar ===
 (function addHighlightStyles() {
     const style = document.createElement("style");
     style.innerHTML = `
@@ -69,8 +65,13 @@ window.addEventListener("beforeunload", function () {
             font-weight: 600;
         }
         #option-chain td.strike { text-align: center; font-weight: 600; }
-
-        /* Snapshot toolbar */
+        h3.expiry-header {
+            margin-top: 1rem;
+            margin-bottom: 0.25rem;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        }
         #ams-toolbar {
             position: fixed;
             top: 12px;
@@ -82,18 +83,11 @@ window.addEventListener("beforeunload", function () {
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
         }
         #ams-toolbar button {
-            background: #333;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+            background: #333; color: white; border: none;
+            padding: 6px 10px; border-radius: 6px; cursor: pointer;
+            font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.12);
         }
-        #ams-toolbar button:hover {
-            background: #111;
-        }
+        #ams-toolbar button:hover { background: #111; }
     `;
     document.head.appendChild(style);
 })();
@@ -102,17 +96,15 @@ window.addEventListener("beforeunload", function () {
    BUILD STATIC HTML LAYOUT
    ============================================================ */
 function buildMarketLayout(data) {
-    // === Market Info ===
+    // === Market Info (ImpliedFuture + Expiry removed) ===
     const marketDiv = document.getElementById("market-info");
     marketDiv.innerHTML = `
         <table>
             <tr>
-                <th>Index Spot</th><th>Implied Future</th>
-                <th>RFR</th><th>DivYield</th><th>Last Update</th>
+                <th>Index Spot</th><th>RFR</th><th>DivYield</th><th>Last Update</th>
             </tr>
             <tr>
                 <td id="IndexSpot"></td>
-                <td id="ImpFut"></td>
                 <td id="RFR"></td>
                 <td id="DivYield"></td>
                 <td id="LastUpdate"></td>
@@ -125,74 +117,106 @@ function buildMarketLayout(data) {
     if (data.futures?.length > 0) {
         let html = "<table><tr><th>Symbol</th><th>Bid</th><th>NPV</th><th>Ask</th><th>OI</th></tr>";
         for (const f of data.futures) {
-            const sym = f.futureSnapshot.tradingSymbol;
-            const token = f.futureSnapshot.token;
+            const snap = f.futureSnapshot;
             html += `
                 <tr>
-                    <td>${sym}</td>
-                    <td id="f_${token}_Bid"></td>
-                    <td id="f_${token}_NPV"></td>
-                    <td id="f_${token}_Ask"></td>
-                    <td id="f_${token}_OI"></td>
+                    <td>${snap.tradingSymbol}</td>
+                    <td id="f_${snap.token}_Bid"></td>
+                    <td id="f_${snap.token}_NPV"></td>
+                    <td id="f_${snap.token}_Ask"></td>
+                    <td id="f_${snap.token}_OI"></td>
                 </tr>`;
         }
         html += "</table>";
         futuresDiv.innerHTML = html;
     }
 
-    // === Option Chain ===
+    // === Option Chain (multi-expiry) ===
+    buildOptionChainTables(data);
+}
+
+/* ============================================================
+   BUILD MULTI-EXPIRY OPTION CHAINS
+   ============================================================ */
+function buildOptionChainTables(data) {
     const optionDiv = document.getElementById("option-chain");
-    if (data.optionPairs?.length > 0) {
-        let html = `
-            <table>
-                <tr>
-                    <th colspan="9">CALLS</th>
-                    <th>Strike</th>
-                    <th colspan="9">PUTS</th>
-                </tr>
-                <tr>
-                    <th>Γ</th><th>Δ</th>
-                    <th>OI</th><th>Bid</th><th>BidSprd</th><th>NPV</th>
-                    <th>AskSprd</th><th>Ask</th><th>IV Used</th>
-                    <th>Strike</th>
-                    <th>IV Used</th><th>Bid</th><th>BidSprd</th>
-                    <th>NPV</th><th>AskSprd</th><th>Ask</th><th>OI</th>
-                    <th>Δ</th><th>Γ</th>
-                </tr>`;
+    optionDiv.innerHTML = "";
 
-        for (const pair of data.optionPairs) {
-            const cToken = pair.c_token;
-            const pToken = pair.p_token;
-            const strike = pair.strike.toLocaleString("en-IN");
-
-            html += `
-                <tr id="row_${cToken}">
-                    <td id="${cToken}_gamma"></td>
-                    <td id="${cToken}_delta"></td>
-                    <td id="${cToken}_oi"></td>
-                    <td id="${cToken}_bid"></td>
-                    <td id="${cToken}_bidsprd"></td>
-                    <td id="${cToken}_npv"></td>
-                    <td id="${cToken}_asksprd"></td>
-                    <td id="${cToken}_ask"></td>
-                    <td id="${cToken}_ivused"></td>
-
-                    <td id="${cToken}_strike" class="strike">${strike}</td>
-
-                    <td id="${pToken}_ivused"></td>
-                    <td id="${pToken}_bid"></td>
-                    <td id="${pToken}_bidsprd"></td>
-                    <td id="${pToken}_npv"></td>
-                    <td id="${pToken}_asksprd"></td>
-                    <td id="${pToken}_ask"></td>
-                    <td id="${pToken}_oi"></td>
-                    <td id="${pToken}_delta"></td>
-                    <td id="${pToken}_gamma"></td>
-                </tr>`;
-        }
-        html += "</table>";
-        optionDiv.innerHTML = html;
+    if (!data.optionPairs?.length) {
+        optionDiv.innerHTML = "<p>No option data available.</p>";
+        return;
     }
+
+    // === Group optionPairs by expiry ===
+    const groups = {};
+    for (const pair of data.optionPairs) {
+        const exp = pair.expiry;
+        if (!groups[exp]) groups[exp] = [];
+        groups[exp].push(pair);
+    }
+
+    // === Render a table for each expiry ===
+    Object.keys(groups)
+        .sort((a, b) => new Date(a) - new Date(b))
+        .forEach(expiry => {
+            const group = groups[expiry];
+
+            const header = document.createElement("h3");
+            header.className = "expiry-header";
+            header.textContent = `Option Chain — Expiry: ${new Date(expiry).toLocaleString("en-GB")}`;
+            optionDiv.appendChild(header);
+
+            let html = `
+                <table>
+                    <tr>
+                        <th colspan="9">CALLS</th>
+                        <th>Strike</th>
+                        <th colspan="9">PUTS</th>
+                    </tr>
+                    <tr>
+                        <th>Γ</th><th>Δ</th>
+                        <th>OI</th><th>Bid</th><th>BidSprd</th><th>NPV</th>
+                        <th>AskSprd</th><th>Ask</th><th>IV Used</th>
+                        <th>Strike</th>
+                        <th>IV Used</th><th>Bid</th><th>BidSprd</th>
+                        <th>NPV</th><th>AskSprd</th><th>Ask</th><th>OI</th>
+                        <th>Δ</th><th>Γ</th>
+                    </tr>`;
+
+            for (const pair of group) {
+                const cToken = pair.c_token;
+                const pToken = pair.p_token;
+                const strike = pair.strike.toLocaleString("en-IN");
+
+                html += `
+                    <tr id="row_${cToken}">
+                        <td id="${cToken}_gamma"></td>
+                        <td id="${cToken}_delta"></td>
+                        <td id="${cToken}_oi"></td>
+                        <td id="${cToken}_bid"></td>
+                        <td id="${cToken}_bidsprd"></td>
+                        <td id="${cToken}_npv"></td>
+                        <td id="${cToken}_asksprd"></td>
+                        <td id="${cToken}_ask"></td>
+                        <td id="${cToken}_ivused"></td>
+
+                        <td id="${cToken}_strike" class="strike">${strike}</td>
+
+                        <td id="${pToken}_ivused"></td>
+                        <td id="${pToken}_bid"></td>
+                        <td id="${pToken}_bidsprd"></td>
+                        <td id="${pToken}_npv"></td>
+                        <td id="${pToken}_asksprd"></td>
+                        <td id="${pToken}_ask"></td>
+                        <td id="${pToken}_oi"></td>
+                        <td id="${pToken}_delta"></td>
+                        <td id="${pToken}_gamma"></td>
+                    </tr>`;
+            }
+
+            html += "</table>";
+            optionDiv.innerHTML += html;
+        });
 }
 
 /* ============================================================
@@ -201,7 +225,6 @@ function buildMarketLayout(data) {
 function updateMarketSnapshot(data) {
     // === Market Info ===
     updateCell("IndexSpot", data.spot, 2, "", true);
-    updateCell("ImpFut", data.impliedFuture, 2, "", true);
     updateCell("RFR", data.riskFreeRate * 100, 2, "%");
     updateCell("DivYield", data.divYield * 100, 2, "%");
     updateCell("LastUpdate", new Date(data.snapTime).toLocaleString("en-GB", {
@@ -223,9 +246,8 @@ function updateMarketSnapshot(data) {
         }
     }
 
-    // === Option Chain ===
+    // === Option Chains ===
     const impliedFuture = typeof data.impliedFuture === "number" ? data.impliedFuture : 0;
-
     if (data.optionPairs) {
         for (const pair of data.optionPairs) {
             const cToken = pair.c_token;
@@ -241,8 +263,6 @@ function updateMarketSnapshot(data) {
             updateCell(`${cToken}_asksprd`, pair.c_askSpread, 2);
             updateCell(`${cToken}_ask`, pair.c_ask, 2);
             updateCell(`${cToken}_ivused`, pair.c_iv * 100, 2, "%");
-
-            // Strike
             updateCell(`${cToken}_strike`, pair.strike, 0, "", true);
 
             // Put side
@@ -256,7 +276,7 @@ function updateMarketSnapshot(data) {
             updateCell(`${pToken}_delta`, pair.p_delta, 4);
             updateCell(`${pToken}_gamma`, pair.p_gamma, 6);
 
-            // Highlight logic
+            // Highlight logic (same)
             const strike = pair.strike;
             const rowElem = document.getElementById(`row_${cToken}`);
             if (rowElem) {
@@ -296,11 +316,10 @@ function updateCell(id, value, digits = 2, suffix = "", commaSeparated = false) 
 function createSnapshotToolbar() {
     if (document.getElementById("ams-toolbar")) return;
 
-    // Add JSZip dynamically if not already loaded
     if (typeof JSZip === "undefined") {
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
-        script.onload = createSnapshotToolbar; // retry after load
+        script.onload = createSnapshotToolbar;
         document.head.appendChild(script);
         return;
     }
@@ -316,13 +335,11 @@ function createSnapshotToolbar() {
             alert("No current snapshot available to download.");
             return;
         }
-
         try {
             const zip = new JSZip();
             const jsonText = JSON.stringify(currentAMS, null, 2);
             zip.file("snapshot.json", jsonText);
             const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
-
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             const now = new Date().toISOString().replace(/[:.]/g, "-");

@@ -20,7 +20,7 @@ namespace MarketData
             // Input validation
             if (future == null) throw new ArgumentNullException(nameof(future));
             if (index == null) throw new ArgumentNullException(nameof(index));
-            if (volSurface == null) throw new ArgumentNullException(nameof(volSurface));
+            //if (volSurface == null) throw new ArgumentNullException(nameof(volSurface));
             if (rfr == null) throw new ArgumentNullException(nameof(rfr));
             if (greeksCalculator == null) throw new ArgumentNullException(nameof(greeksCalculator));
 
