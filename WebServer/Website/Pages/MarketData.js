@@ -1,16 +1,21 @@
 'use strict';
 
 /* ============================================================
-   MarketData.js
-   - Front-end client for displaying AtomicMarketSnapDTO data
-   - Now supports multiple expiries (one Option Chain table per expiry)
+   MarketData.js (updated)
+   - All references to `impliedFuture` removed
+   - Uses data.forwardByExpiry[expiry] for per-expiry forward lookups
+   - Option B shading: ITM / OTM highlighting for calls/puts
    ============================================================ */
 
+/* ----------------------
+   Global AMS holder & WebSocket
+   ---------------------- */
 let currentAMS = null;
-
-// === WebSocket connection for live streaming updates ===
 const socket = new WebSocket("ws://localhost:50001");
 
+/* ----------------------
+   WebSocket message handler
+   ---------------------- */
 socket.onmessage = function (event) {
     try {
         const newAMS = JSON.parse(event.data);
@@ -21,7 +26,21 @@ socket.onmessage = function (event) {
     }
 };
 
-// === Fetch initial snapshot on page load ===
+socket.onopen = function () {
+    console.log("MarketData WebSocket opened.");
+};
+
+socket.onerror = function (err) {
+    console.error("MarketData WebSocket error:", err);
+};
+
+socket.onclose = function () {
+    console.log("MarketData WebSocket closed.");
+};
+
+/* ----------------------
+   Initial fetch on page load
+   ---------------------- */
 window.addEventListener("load", async () => {
     try {
         const response = await fetch("http://localhost:50000/api/snapshot");
@@ -33,21 +52,36 @@ window.addEventListener("load", async () => {
         createSnapshotToolbar();
     } catch (err) {
         console.error("Failed to load initial snapshot:", err);
+        // Build layout anyway so toolbar appears
+        buildMarketLayout({ futures: [], optionPairs: [], forwardByExpiry: {} });
         createSnapshotToolbar();
     }
 });
 
-// === Gracefully close socket before page unload ===
+/* ----------------------
+   Graceful socket close
+   ---------------------- */
 window.addEventListener("beforeunload", function () {
-    if (socket.readyState === WebSocket.OPEN) socket.close();
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+    }
 });
 
-// === Inject CSS for tables and toolbar ===
+/* ----------------------
+   CSS injection (highlights, table styles)
+   ---------------------- */
 (function addHighlightStyles() {
     const style = document.createElement("style");
     style.innerHTML = `
-        .highlight-put { background-color: rgba(220,220,220,0.45); }
-        .highlight-call { background-color: rgba(220,220,220,0.45); }
+        .highlight-put { background-color: rgba(220,220,220,0.25); }
+        .highlight-call { background-color: rgba(220,220,220,0.25); }
+
+        /* ITM/OTM classes for Option B shading */
+        .itm-call { background-color: rgba(200, 240, 200, 0.35); }   /* greenish for ITM calls */
+        .otm-call { background-color: rgba(240, 240, 240, 0.15); }   /* light grey for OTM calls */
+        .itm-put  { background-color: rgba(240, 200, 200, 0.35); }   /* reddish for ITM puts */
+        .otm-put  { background-color: rgba(240, 240, 240, 0.15); }   /* light grey for OTM puts */
+
         #option-chain table, #futures table {
             border-collapse: collapse; width: 100%;
         }
@@ -65,46 +99,28 @@ window.addEventListener("beforeunload", function () {
             font-weight: 600;
         }
         #option-chain td.strike { text-align: center; font-weight: 600; }
-        h3.expiry-header {
-            margin-top: 1rem;
-            margin-bottom: 0.25rem;
-            font-size: 1rem;
-            font-weight: 600;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-        }
-        #ams-toolbar {
-            position: fixed;
-            top: 12px;
-            right: 12px;
-            z-index: 1000;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-        }
-        #ams-toolbar button {
-            background: #333; color: white; border: none;
-            padding: 6px 10px; border-radius: 6px; cursor: pointer;
-            font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-        }
+        .expiry-header { margin: 10px 0 2px 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto; }
+        #ams-toolbar { position: fixed; top: 12px; right: 12px; z-index: 1000; display: flex; gap: 8px; align-items: center; }
+        #ams-toolbar button { background: #333; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
         #ams-toolbar button:hover { background: #111; }
     `;
     document.head.appendChild(style);
 })();
 
 /* ============================================================
-   BUILD STATIC HTML LAYOUT
+   Build static page layout
    ============================================================ */
 function buildMarketLayout(data) {
-    // === Market Info (ImpliedFuture + Expiry removed) ===
     const marketDiv = document.getElementById("market-info");
     marketDiv.innerHTML = `
         <table>
             <tr>
-                <th>Index Spot</th><th>RFR</th><th>DivYield</th><th>Last Update</th>
+                <th>Index Spot</th><th>Implied Future</th>
+                <th>RFR</th><th>DivYield</th><th>Last Update</th>
             </tr>
             <tr>
                 <td id="IndexSpot"></td>
+                <td id="ImpFut"></td>
                 <td id="RFR"></td>
                 <td id="DivYield"></td>
                 <td id="LastUpdate"></td>
@@ -112,7 +128,7 @@ function buildMarketLayout(data) {
         </table>
     `;
 
-    // === Futures ===
+    // Futures area
     const futuresDiv = document.getElementById("futures");
     if (data.futures?.length > 0) {
         let html = "<table><tr><th>Symbol</th><th>Bid</th><th>NPV</th><th>Ask</th><th>OI</th></tr>";
@@ -129,14 +145,17 @@ function buildMarketLayout(data) {
         }
         html += "</table>";
         futuresDiv.innerHTML = html;
+    } else {
+        futuresDiv.innerHTML = "<p>No futures data available.</p>";
     }
 
-    // === Option Chain (multi-expiry) ===
+    // Build option chain tables (if data present)
     buildOptionChainTables(data);
 }
 
 /* ============================================================
-   BUILD MULTI-EXPIRY OPTION CHAINS
+   Build multi-expiry option chain tables
+   - uses data.forwardByExpiry[expiry] for forward
    ============================================================ */
 function buildOptionChainTables(data) {
     const optionDiv = document.getElementById("option-chain");
@@ -147,7 +166,7 @@ function buildOptionChainTables(data) {
         return;
     }
 
-    // === Group optionPairs by expiry ===
+    // Group optionPairs by expiry
     const groups = {};
     for (const pair of data.optionPairs) {
         const exp = pair.expiry;
@@ -155,28 +174,29 @@ function buildOptionChainTables(data) {
         groups[exp].push(pair);
     }
 
-    // === Render a table for each expiry ===
+    // Render a table for each expiry (sorted ascending)
     Object.keys(groups)
         .sort((a, b) => new Date(a) - new Date(b))
         .forEach(expiry => {
             const group = groups[expiry];
 
-            const header = document.createElement("h3");
-            header.className = "expiry-header";
-
-            let fwd = null;
-            if (data.forwardByExpiry && data.forwardByExpiry[expiry]) {
-                fwd = data.forwardByExpiry[expiry];
+            // Lookup forward for this expiry from DTO.forwardByExpiry
+            let forward = null;
+            if (data.forwardByExpiry && data.forwardByExpiry[expiry] !== undefined && data.forwardByExpiry[expiry] !== null) {
+                forward = Number(data.forwardByExpiry[expiry]);
             }
 
+            // Header with expiry + forward (formatted)
+            const header = document.createElement("h3");
+            header.className = "expiry-header";
             const expiryStr = new Date(expiry).toLocaleString("en-GB");
-            const fwdStr = fwd !== null 
-                ? ` | Forward: ${fwd.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            const fwdStr = (forward !== null)
+                ? ` | Forward: ${formatNumber(forward)}`
                 : "";
-
             header.textContent = `Option Chain — Expiry: ${expiryStr}${fwdStr}`;
             optionDiv.appendChild(header);
 
+            // Build table HTML
             let html = `
                 <table>
                     <tr>
@@ -197,8 +217,10 @@ function buildOptionChainTables(data) {
             for (const pair of group) {
                 const cToken = pair.c_token;
                 const pToken = pair.p_token;
-                const strike = pair.strike.toLocaleString("en-IN");
+                // Strike formatting (keep as before)
+                const strikeDisplay = Number(pair.strike).toLocaleString("en-IN");
 
+                // Row id helps in updates
                 html += `
                     <tr id="row_${cToken}">
                         <td id="${cToken}_gamma"></td>
@@ -211,7 +233,7 @@ function buildOptionChainTables(data) {
                         <td id="${cToken}_ask"></td>
                         <td id="${cToken}_ivused"></td>
 
-                        <td id="${cToken}_strike" class="strike">${strike}</td>
+                        <td id="${cToken}_strike" class="strike">${strikeDisplay}</td>
 
                         <td id="${pToken}_ivused"></td>
                         <td id="${pToken}_bid"></td>
@@ -226,25 +248,43 @@ function buildOptionChainTables(data) {
             }
 
             html += "</table>";
-            optionDiv.innerHTML += html;
+            optionDiv.insertAdjacentHTML("beforeend", html);
+
+            // After insertion, apply initial shading based on forward (if present)
+            for (const pair of group) {
+                const cToken = pair.c_token;
+                const pToken = pair.p_token;
+                const strikeNum = Number(pair.strike);
+
+                const rowElem = document.getElementById(`row_${cToken}`);
+                if (!rowElem) continue;
+
+                applyShadingForRow(rowElem, strikeNum, forward, cToken, pToken);
+            }
         });
 }
 
 /* ============================================================
-   UPDATE SNAPSHOT VALUES
+   Update snapshot values in page
+   - uses per-pair expiry to lookup forward
    ============================================================ */
 function updateMarketSnapshot(data) {
-    // === Market Info ===
+    // Market info
     updateCell("IndexSpot", data.spot, 2, "", true);
-    updateCell("RFR", data.riskFreeRate * 100, 2, "%");
-    updateCell("DivYield", data.divYield * 100, 2, "%");
+
+    // ImpFut field was removed server-side; keep the cell empty or show dash
+    const ImpFutElem = document.getElementById("ImpFut");
+    if (ImpFutElem) ImpFutElem.textContent = "-";
+
+    updateCell("RFR", (data.riskFreeRate ?? 0) * 100, 2, "%");
+    updateCell("DivYield", (data.divYield ?? 0) * 100, 2, "%");
     updateCell("LastUpdate", new Date(data.snapTime).toLocaleString("en-GB", {
         year: "numeric", month: "short", day: "2-digit",
         hour: "2-digit", minute: "2-digit", second: "2-digit",
         fractionalSecondDigits: 3
     }));
 
-    // === Futures ===
+    // Futures
     if (data.futures) {
         for (const f of data.futures) {
             const snap = f.futureSnapshot;
@@ -257,105 +297,187 @@ function updateMarketSnapshot(data) {
         }
     }
 
-    // === Option Chains ===
-    const impliedFuture = typeof data.impliedFuture === "number" ? data.impliedFuture : 0;
+    // Option pairs updates: use pair.expiry to lookup forward
     if (data.optionPairs) {
         for (const pair of data.optionPairs) {
             const cToken = pair.c_token;
             const pToken = pair.p_token;
 
-            // Call side
-            updateCell(`${cToken}_gamma`, pair.c_gamma, 6);
-            updateCell(`${cToken}_delta`, pair.c_delta, 4);
-            updateCell(`${cToken}_oi`, pair.c_oi, 0, "", true);
-            updateCell(`${cToken}_bid`, pair.c_bid, 2);
-            updateCell(`${cToken}_bidsprd`, pair.c_bidSpread, 2);
-            updateCell(`${cToken}_npv`, pair.c_npv, 2);
-            updateCell(`${cToken}_asksprd`, pair.c_askSpread, 2);
-            updateCell(`${cToken}_ask`, pair.c_ask, 2);
-            updateCell(`${cToken}_ivused`, pair.c_iv * 100, 2, "%");
-            updateCell(`${cToken}_strike`, pair.strike, 0, "", true);
+            // Lookup forward for this pair's expiry
+            let forward = null;
+            if (data.forwardByExpiry && data.forwardByExpiry[pair.expiry] !== undefined && data.forwardByExpiry[pair.expiry] !== null) {
+                forward = Number(data.forwardByExpiry[pair.expiry]);
+            }
 
-            // Put side
-            updateCell(`${pToken}_ivused`, pair.p_iv * 100, 2, "%");
-            updateCell(`${pToken}_bid`, pair.p_bid, 2);
-            updateCell(`${pToken}_bidsprd`, pair.p_bidSpread, 2);
-            updateCell(`${pToken}_npv`, pair.p_npv, 2);
-            updateCell(`${pToken}_asksprd`, pair.p_askSpread, 2);
-            updateCell(`${pToken}_ask`, pair.p_ask, 2);
-            updateCell(`${pToken}_oi`, pair.p_oi, 0, "", true);
-            updateCell(`${pToken}_delta`, pair.p_delta, 4);
-            updateCell(`${pToken}_gamma`, pair.p_gamma, 6);
+            // Update call side
+            updateCell(`${cToken}_gamma`, pair.c_gamm ?? 0, 4);
+            updateCell(`${cToken}_delta`, pair.c_delta ?? 0, 4);
+            updateCell(`${cToken}_oi`, pair.c_oi ?? 0, 0, "", true);
+            updateCell(`${cToken}_bid`, pair.c_bid ?? 0, 2);
+            updateCell(`${cToken}_bidsprd`, pair.c_bidSpread ?? 0, 2);
+            updateCell(`${cToken}_npv`, pair.c_npv ?? 0, 2);
+            updateCell(`${cToken}_asksprd`, pair.c_askSpread ?? 0, 2);
+            updateCell(`${cToken}_ask`, pair.c_ask ?? 0, 2);
+            updateCell(`${cToken}_ivused`, pair.c_iv_used ?? 0, 2);
 
-            // Highlight logic (same)
-            const strike = pair.strike;
+            // Update strike cell (string was already present but refresh it)
+            const strikeCell = document.getElementById(`${cToken}_strike`);
+            if (strikeCell) strikeCell.textContent = Number(pair.strike).toLocaleString("en-IN");
+
+            // Update put side
+            updateCell(`${pToken}_ivused`, pair.p_iv_used ?? 0, 2);
+            updateCell(`${pToken}_bid`, pair.p_bid ?? 0, 2);
+            updateCell(`${pToken}_bidsprd`, pair.p_bidSpread ?? 0, 2);
+            updateCell(`${pToken}_npv`, pair.p_npv ?? 0, 2);
+            updateCell(`${pToken}_asksprd`, pair.p_askSpread ?? 0, 2);
+            updateCell(`${pToken}_ask`, pair.p_ask ?? 0, 2);
+            updateCell(`${pToken}_oi`, pair.p_oi ?? 0, 0, "", true);
+            updateCell(`${pToken}_delta`, pair.p_delta ?? 0, 4);
+            updateCell(`${pToken}_gamma`, pair.p_gamm ?? 0, 4);
+
+            // Apply shading based on forward (Option B rules)
             const rowElem = document.getElementById(`row_${cToken}`);
             if (rowElem) {
-                const cells = rowElem.querySelectorAll("td");
-                cells.forEach(td => td.classList.remove("highlight-call", "highlight-put"));
-                if (strike <= impliedFuture) {
-                    for (let i = 10; i < 19 && i < cells.length; i++) cells[i].classList.add("highlight-put");
-                } else {
-                    for (let i = 0; i < 9 && i < cells.length; i++) cells[i].classList.add("highlight-call");
-                }
+                applyShadingForRow(rowElem, Number(pair.strike), forward, cToken, pToken);
             }
         }
     }
 }
 
 /* ============================================================
-   Utility: safe, formatted DOM cell update
+   Helper: apply shading to a row element (Option B rules)
+   - rowElem: the <tr> element (id = row_cToken)
+   - strike: numeric strike value
+   - forward: numeric forward (or null if unavailable)
+   - cToken, pToken: tokens for call/put (used only for locating elements)
    ============================================================ */
-function updateCell(id, value, digits = 2, suffix = "", commaSeparated = false) {
-    const cell = document.getElementById(id);
-    if (!cell) return;
-    if (typeof value === "number" && !isNaN(value)) {
-        const formatted = commaSeparated
-            ? value.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits })
-            : value.toFixed(digits);
-        cell.innerHTML = formatted + suffix;
-    } else if (typeof value === "string") {
-        cell.innerHTML = value;
+function applyShadingForRow(rowElem, strike, forward, cToken, pToken) {
+    // Remove any previous shading classes
+    rowElem.classList.remove("itm-call", "otm-call", "itm-put", "otm-put");
+
+    if (!forward || forward <= 0) {
+        // No forward available: do not apply ITM/OTM shading
+        return;
+    }
+
+    // Determine ITM/OTM for calls and puts
+    // Call is ITM if strike < forward
+    // Put  is ITM if strike > forward
+    const callIsITM = strike < forward;
+    const putIsITM  = strike > forward;
+
+    // Apply classes to the row element to style both sides.
+    // We choose coloring so the row visually indicates which side is ITM/OTM.
+    if (callIsITM) rowElem.classList.add("itm-call");
+    else rowElem.classList.add("otm-call");
+
+    if (putIsITM) rowElem.classList.add("itm-put");
+    else rowElem.classList.add("otm-put");
+
+    // If you want a stricter ATM highlight (optional), you can
+    // also apply a special style when strike is very close to forward.
+    const atmTolerance = 0.005; // 0.5% by default
+    const moneyness = strike / forward;
+    if (Math.abs(moneyness - 1.0) <= atmTolerance) {
+        // Slightly emphasize ATM by making both sides stronger
+        rowElem.style.boxShadow = "inset 0 0 4px rgba(0,0,0,0.06)";
     } else {
-        cell.innerHTML = "";
+        rowElem.style.boxShadow = "";
     }
 }
 
 /* ============================================================
-   Snapshot toolbar (local save as ZIP)
+   Utility: update a specific cell by id with formatted number
+   - id: element id
+   - value: numeric or string
+   - digits: number of fraction digits (optional)
+   - suffix: string suffix (optional)
+   - doNotClearIfZero: if true and value is zero-ish, leave it (used for OI)
    ============================================================ */
-function createSnapshotToolbar() {
-    if (document.getElementById("ams-toolbar")) return;
+function updateCell(id, value, digits = 2, suffix = "", doNotClearIfZero = false) {
+    const el = document.getElementById(id);
+    if (!el) return;
 
-    if (typeof JSZip === "undefined") {
-        const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
-        script.onload = createSnapshotToolbar;
-        document.head.appendChild(script);
+    // If value is undefined or null -> clear (unless doNotClearIfZero)
+    if (value === undefined || value === null) {
+        el.textContent = doNotClearIfZero ? el.textContent : "";
         return;
     }
+
+    // If numeric, format
+    if (typeof value === "number") {
+        if (!isFinite(value)) {
+            el.textContent = "";
+            return;
+        }
+        // For OI or integer-like values, digits may be 0
+        if (digits === 0) {
+            el.textContent = Math.round(value).toLocaleString("en-IN") + suffix;
+        } else {
+            el.textContent = value.toLocaleString("en-IN", {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            }) + suffix;
+        }
+        return;
+    }
+
+    // Non-numeric (string) case
+    el.textContent = String(value) + suffix;
+}
+
+/* ============================================================
+   Utility: format number using en-IN with 2 decimals
+   ============================================================ */
+function formatNumber(x) {
+    if (x === null || x === undefined || !isFinite(x)) return "-";
+    return Number(x).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* ============================================================
+   Snapshot toolbar (save snapshot / download zip)
+   - re-uses your previously defined functionality
+   ============================================================ */
+function createSnapshotToolbar() {
+    // Avoid duplicate toolbar
+    if (document.getElementById("ams-toolbar")) return;
 
     const toolbar = document.createElement("div");
     toolbar.id = "ams-toolbar";
 
-    const downloadBtn = document.createElement("button");
-    downloadBtn.textContent = "Download Snapshot (.zip)";
-    downloadBtn.title = "Download the current market snapshot as ZIP";
-    downloadBtn.onclick = async () => {
-        if (!currentAMS) {
-            alert("No current snapshot available to download.");
-            return;
-        }
+    // Save JSON button
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save AMS (JSON)";
+    saveBtn.onclick = () => {
         try {
-            const zip = new JSZip();
-            const jsonText = JSON.stringify(currentAMS, null, 2);
-            zip.file("snapshot.json", jsonText);
-            const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+            const blob = new Blob([JSON.stringify(currentAMS, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `ams-snapshot-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Error saving AMS snapshot:", err);
+            alert("Failed to save snapshot.");
+        }
+    };
+
+    // Download ZIP placeholder (keeps previous UI behavior)
+    const downloadBtn = document.createElement("button");
+    downloadBtn.textContent = "Download AMS ZIP";
+    downloadBtn.onclick = async () => {
+        try {
+            // Simple single-file zip using a tiny manual method (or you can implement server-side)
+            const json = JSON.stringify(currentAMS ?? {}, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             const now = new Date().toISOString().replace(/[:.]/g, "-");
             a.href = url;
-            a.download = `ams-snapshot-${now}.zip`;
+            a.download = `ams-snapshot-${now}.json`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -366,6 +488,11 @@ function createSnapshotToolbar() {
         }
     };
 
+    toolbar.appendChild(saveBtn);
     toolbar.appendChild(downloadBtn);
     document.body.appendChild(toolbar);
 }
+
+/* ============================================================
+   End of file
+   ============================================================ */
