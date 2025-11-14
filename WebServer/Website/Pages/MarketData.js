@@ -163,7 +163,18 @@ function buildOptionChainTables(data) {
 
             const header = document.createElement("h3");
             header.className = "expiry-header";
-            header.textContent = `Option Chain — Expiry: ${new Date(expiry).toLocaleString("en-GB")}`;
+
+            let fwd = null;
+            if (data.forwardByExpiry && data.forwardByExpiry[expiry]) {
+                fwd = data.forwardByExpiry[expiry];
+            }
+
+            const expiryStr = new Date(expiry).toLocaleString("en-GB");
+            const fwdStr = fwd !== null 
+                ? ` | Forward: ${fwd.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : "";
+
+            header.textContent = `Option Chain — Expiry: ${expiryStr}${fwdStr}`;
             optionDiv.appendChild(header);
 
             let html = `
