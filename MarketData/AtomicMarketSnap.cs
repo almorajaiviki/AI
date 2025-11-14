@@ -236,6 +236,18 @@ namespace MarketData
                         P_askSpread = pair.PutSpreads.AskSpread
                     }))
                 .ToArray();
+            
+            var expiryForwardMap = new Dictionary<DateTime, double>();
+            if (_forwardCurve != null)
+            {
+                foreach (var kvp in _optionChainsByExpiry)
+                {
+                    var expiry = kvp.Key;
+                    double tte = _calendar.GetYearFraction(_initializationTime, expiry);
+                    double fwd = _forwardCurve.GetForwardPrice(tte);
+                    expiryForwardMap[expiry] = fwd;
+                }
+            }
 
             return new AtomicMarketSnapDTO
             {
@@ -249,7 +261,8 @@ namespace MarketData
                 OptionPairs = allPairs,
                 Futures = _futuresByToken.Values.ToArray(),
                 VolSurface = _volSurface.ToDTO(),
-                ForwardCurve = _forwardCurve != null ? ForwardCurveDTO.FromForwardCurve(_forwardCurve) : null
+                ForwardCurve = _forwardCurve != null ? ForwardCurveDTO.FromForwardCurve(_forwardCurve) : null,
+                ForwardByExpiry = expiryForwardMap
             };
         }
 
@@ -413,6 +426,7 @@ namespace MarketData
         public FutureDetailDTO[]? Futures { get; set; }
         public VolSurfaceDTO? VolSurface { get; set; }
         public ForwardCurveDTO? ForwardCurve { get; set; }
+        public Dictionary<DateTime, double>? ForwardByExpiry { get; set; }
     }
 
     public sealed class OptionPairDTO
