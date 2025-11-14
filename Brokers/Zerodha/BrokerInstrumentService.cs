@@ -58,10 +58,10 @@ namespace Zerodha
                 throw new InvalidOperationException($"No options found for symbol {IndexSymbol} after {now}");
 
             var futureExpiry = filteredFutures.Select(f => f.Expiry).Min();
-            var latestExpiryOptions = filteredOptions.Where(o => o.Expiry.Date == futureExpiry.Date).ToList();
+            //var latestExpiryOptions = filteredOptions.Where(o => o.Expiry.Date == futureExpiry.Date).ToList();
 
             // Optional: filter strikes
-            var strikeFilteredOptions = latestExpiryOptions.Where(opt => opt.StrikePrice % 100 == 0).ToList();
+            var strikeFilteredOptions = filteredOptions.Where(opt => opt.StrikePrice % 100 == 0).ToList();
 
             return (index, strikeFilteredOptions, filteredFutures, futureExpiry);
         }

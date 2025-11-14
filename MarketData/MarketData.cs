@@ -167,44 +167,60 @@ namespace MarketData
 
         private IParametricModelSurface CreateVolatilitySurface(double OICutoff, ForwardCurve? forwardCurve = null)
         {
-            var indexSnapshot = _index.GetSnapshot();
-            var expiry = _optionsByToken.Values.First().Expiry;
-            double timeToExpiry = _index.Calendar.GetYearFraction(_initializationTime, expiry);
+            if (forwardCurve == null)
+                throw new InvalidOperationException("ForwardCurve is required to create volatility surface.");
 
+            var now = _initializationTime;
+            var calendar = _index.Calendar;
+
+            // Get raw snapshots of all options
             var optionSnapshots = _optionsByToken.Values
                 .Select(o => o.GetSnapshot())
-                .ToImmutableArray();
-
-            var callData = optionSnapshots
-                .Where(s => s.OptionType == OptionType.CE)
-                .Select(s => (s.Strike, Price: s.Mid, s.OI))
                 .ToList();
 
-            var putData = optionSnapshots
-                .Where(s => s.OptionType == OptionType.PE)
-                .Select(s => (s.Strike, Price: s.Mid, s.OI))
-                .ToList();
+            // Group snapshots by expiry
+            var groupsByExpiry = optionSnapshots
+                .GroupBy(s => s.Expiry)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-            double forwardPrice = forwardCurve != null
-                ? forwardCurve.GetForwardPrice(timeToExpiry)
-                : throw new InvalidOperationException("ForwardCurve is required to create volatility surface.");
+            var skewParamsList = new List<(
+                IEnumerable<(double strike, double Price, double OI)> callData,
+                IEnumerable<(double strike, double Price, double OI)> putData,
+                double forwardPrice,
+                double riskFreeRate,
+                double timeToExpiry,
+                double OICutoff)>();
 
-            IParametricModelSurface volSurface;
-            switch (_volatilityModel)
+            foreach (var (expiry, snaps) in groupsByExpiry)
             {
-                case VolatilityModel.Black76:
-                    volSurface = new Black76VolSurface(
-                        callData,
-                        putData,
-                        forwardPrice, // forwardPrice
-                        _rfr.Value,                  // riskFreeRate
-                        timeToExpiry,
-                        OICutoff);                     // OICutoff
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(_volatilityModel), $"Volatility model {_volatilityModel} not supported.");
+                double tte = calendar.GetYearFraction(now, expiry);
+
+                double forward = forwardCurve.GetForwardPrice(tte);
+
+                var calls = snaps
+                    .Where(s => s.OptionType == OptionType.CE)
+                    .Select(s => (s.Strike, Price: s.Mid, OI: (double)s.OI))
+                    .ToList();
+
+                var puts = snaps
+                    .Where(s => s.OptionType == OptionType.PE)
+                    .Select(s => (s.Strike, Price: s.Mid, OI: (double)s.OI))
+                    .ToList();
+
+                if (calls.Count == 0 || puts.Count == 0)
+                    continue; // skip incomplete expiry
+
+                skewParamsList.Add((
+                    calls,
+                    puts,
+                    forward,
+                    _rfr.Value,
+                    tte,
+                    OICutoff
+                ));
             }
-            return volSurface;
+
+            return new Black76VolSurface(skewParamsList);
         }
 
         private void UpdateAtomicSnapshot(IParametricModelSurface volSurface, ForwardCurve? forwardCurve)

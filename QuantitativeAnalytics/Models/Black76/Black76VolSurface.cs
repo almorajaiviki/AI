@@ -251,6 +251,18 @@ namespace QuantitativeAnalytics
 
             foreach (var p in skewParamsList)
             {
+                // --- FILTER BY OI BEFORE constructing the skew ---
+                var callFiltered = p.callData.Where(x => x.OI >= p.OICutoff).ToList();
+                var putFiltered  = p.putData .Where(x => x.OI >= p.OICutoff).ToList();
+
+                // If no usable strikes OR too few points to build a spline → skip expiry
+                if (callFiltered.Count < 2 || putFiltered.Count < 2)
+                {
+                    Console.WriteLine(
+                        $"⚠️ Skipping expiry slice (TTE={p.timeToExpiry:F4}): insufficient liquid strikes.");
+                    continue;
+                }
+
                 if (p.callData == null) throw new ArgumentException("callData cannot be null", nameof(p.callData));
                 if (p.putData == null) throw new ArgumentException("putData cannot be null", nameof(p.putData));
                 if (p.forwardPrice <= 0) throw new ArgumentException("forwardPrice must be positive", nameof(p.forwardPrice));
@@ -268,6 +280,10 @@ namespace QuantitativeAnalytics
                 _skews.Add(skew);
             }
 
+            if (_skews.Count == 0)
+            throw new InvalidOperationException(
+                "Black76VolSurface: No valid vol skew slices were constructed (all expiries illiquid).");
+
             // Sort by timeToExpiry from the skew objects
             _skews = _skews.OrderBy(s => s.TimeToExpiry).ToList();
         }
@@ -279,8 +295,21 @@ namespace QuantitativeAnalytics
         {
             if (skews == null)
                 throw new ArgumentNullException(nameof(skews));
+            
+            // Materialize and check for emptiness
+            var skewList = skews.ToList();
+            if (skewList.Count == 0)
+                throw new InvalidOperationException(
+                    "Black76VolSurface: Cannot construct vol surface with zero skews.");
 
-            _skews = skews
+            // Check for null items
+            if (skewList.Any(s => s == null))
+                throw new ArgumentException(
+                    "Black76VolSurface: Skew list contains one or more null entries.",
+                    nameof(skews));
+
+            // Sort and assign
+            _skews = skewList
                 .OrderBy(s => s.TimeToExpiry)
                 .ToList();
         }
