@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using CalendarLib;
 using QuantitativeAnalytics;
 using InstrumentStatic;
-using System.Linq;
 
 namespace MarketData
 {
@@ -16,7 +15,7 @@ namespace MarketData
         private readonly DateTime _initializationTime;
         private readonly DateTime _expiry;
         private readonly double _indexSpot;
-        private readonly double _impliedFuture;
+        //private readonly double _impliedFuture;
         private readonly uint _token;
         private readonly double _riskFreeRate;
         private readonly double _divYield;
@@ -86,7 +85,7 @@ namespace MarketData
             _initializationTime = initializationTime;
             _expiry = expiry;
             _indexSpot = indexSpot;
-            _impliedFuture = impliedFuture;
+            //_impliedFuture = impliedFuture;
             _token = token;
             _riskFreeRate = riskFreeRate;
             _divYield = divYield;
@@ -111,7 +110,7 @@ namespace MarketData
         public DateTime InitializationTime => _initializationTime;
         public DateTime Expiry => _expiry;
         public double IndexSpot => _indexSpot;
-        public double ImpliedFuture => _impliedFuture;
+        //public double ImpliedFuture => _impliedFuture;
         public double RiskFreeRate => _riskFreeRate;
         public double DivYield => _divYield;
         public uint Token => _token;
@@ -253,7 +252,7 @@ namespace MarketData
             {
                 Index = _indexTradingSymbol,
                 Spot = _indexSpot,
-                ImpliedFuture = _impliedFuture,
+                //ImpliedFuture = _impliedFuture,
                 RiskFreeRate = _riskFreeRate,
                 DivYield = _divYield,
                 Expiry = _optionChainsByExpiry.Keys.Max(), // latest expiry (for reference)
@@ -280,7 +279,7 @@ namespace MarketData
             _initializationTime = dto.SnapTime;
             _expiry = dto.Expiry;
             _indexSpot = dto.Spot;
-            _impliedFuture = dto.ImpliedFuture;
+            //_impliedFuture = dto.ImpliedFuture;
             _riskFreeRate = dto.RiskFreeRate;
             _divYield = dto.DivYield;
             _calendar = calendar;
@@ -333,7 +332,7 @@ namespace MarketData
                         oi: pair.C_oi
                         );
 
-                    var callGreeks = new OptionGreeks(callSnap, _indexSpot, _impliedFuture, _riskFreeRate, tte, _volSurface, _greeksCalculator);                     
+                    var callGreeks = new OptionGreeks(callSnap, _indexSpot, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator);                     
                     
                     // Put snapshot + greeks
                     var putSnap = new OptionSnapshot(
@@ -346,7 +345,7 @@ namespace MarketData
                         bid: pair.P_bid,
                         ask: pair.P_ask,
                         oi: pair.P_oi);
-                    var putGreeks = new OptionGreeks(putSnap, _indexSpot, _impliedFuture, _riskFreeRate, tte, _volSurface, _greeksCalculator);
+                    var putGreeks = new OptionGreeks(putSnap, _indexSpot, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator);
 
                     optionSnapshots.Add(callSnap);
                     optionSnapshots.Add(putSnap);
@@ -416,7 +415,7 @@ namespace MarketData
     {
         public string Index { get; set; } = string.Empty;
         public double Spot { get; set; }
-        public double ImpliedFuture { get; set; }
+        //public double ImpliedFuture { get; set; }
         public double RiskFreeRate { get; set; }
         public double DivYield { get; set; }
         public DateTime Expiry { get; set; }

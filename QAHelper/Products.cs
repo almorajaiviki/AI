@@ -62,18 +62,18 @@ namespace QAHelper
             switch (model)
             {
                 case ModelType.Black76:
+                    // Compute time-to-expiry as year fraction between snapshot initialization and contract expiry
+                    // Assumes CalendarLib.GetYearFraction(DateTime start, DateTime end) exists and returns double (years)
+                    var marketInfo = MarketHelperDict.MarketHelperDict.MarketInfoDict.First().Value;
+                    double tte = marketInfo.NSECalendar.GetYearFraction(ams.InitializationTime, product.Expiry);
                     if (productType == ProductType.Future)
                     {
-                        return ams.ImpliedFuture;
+                        return ams.ForwardCurve!.GetForwardPrice(tte) ;
                     }
                     else if (productType == ProductType.Option && product is OptionProduct opt)
                     {
-                        // Compute time-to-expiry as year fraction between snapshot initialization and contract expiry
-                        // Assumes CalendarLib.GetYearFraction(DateTime start, DateTime end) exists and returns double (years)
-                        var marketInfo = MarketHelperDict.MarketHelperDict.MarketInfoDict.First().Value;
-                        double tte = marketInfo.NSECalendar.GetYearFraction(ams.InitializationTime, product.Expiry);
                         bool isCall = opt.OptionType == OptionType.Call;
-                        double forward = ams.ImpliedFuture;
+                        double forward = ams.ForwardCurve!.GetForwardPrice(tte) ;
                         double strike = opt.Strike;
                         double rfr = ams.RiskFreeRate;
                         double div = ams.DivYield;
