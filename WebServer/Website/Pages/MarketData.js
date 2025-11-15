@@ -76,6 +76,10 @@ window.addEventListener("beforeunload", function () {
         .highlight-put { background-color: rgba(220,220,220,0.25); }
         .highlight-call { background-color: rgba(220,220,220,0.25); }
 
+        .expiry-header button:hover {
+           background: #e0e0e0;
+}
+
         /* ITM/OTM classes for Option B shading */
         .itm-call { background-color: rgba(200, 240, 200, 0.35); }   /* greenish for ITM calls */
         .otm-call { background-color: rgba(240, 240, 240, 0.15); }   /* light grey for OTM calls */
@@ -166,7 +170,7 @@ function buildOptionChainTables(data) {
         return;
     }
 
-    // Group optionPairs by expiry
+    // === Group optionPairs by expiry ===
     const groups = {};
     for (const pair of data.optionPairs) {
         const exp = pair.expiry;
@@ -174,29 +178,66 @@ function buildOptionChainTables(data) {
         groups[exp].push(pair);
     }
 
-    // Render a table for each expiry (sorted ascending)
+    // === Render a collapsible table for each expiry ===
     Object.keys(groups)
         .sort((a, b) => new Date(a) - new Date(b))
         .forEach(expiry => {
             const group = groups[expiry];
 
-            // Lookup forward for this expiry from DTO.forwardByExpiry
+            // Lookup forward for this expiry
             let forward = null;
-            if (data.forwardByExpiry && data.forwardByExpiry[expiry] !== undefined && data.forwardByExpiry[expiry] !== null) {
+            if (data.forwardByExpiry && data.forwardByExpiry[expiry] != null) {
                 forward = Number(data.forwardByExpiry[expiry]);
             }
 
-            // Header with expiry + forward (formatted)
+            // ---- Wrapper container for this expiry ----
+            const wrapper = document.createElement("div");
+            wrapper.className = "expiry-wrapper";
+            wrapper.style.marginBottom = "12px";
+
+            // ---- Header with toggle button ----
             const header = document.createElement("h3");
             header.className = "expiry-header";
+            header.style.display = "flex";
+            header.style.alignItems = "center";
+            header.style.gap = "10px";
+
             const expiryStr = new Date(expiry).toLocaleString("en-GB");
             const fwdStr = (forward !== null)
                 ? ` | Forward: ${formatNumber(forward)}`
                 : "";
-            header.textContent = `Option Chain — Expiry: ${expiryStr}${fwdStr}`;
-            optionDiv.appendChild(header);
 
-            // Build table HTML
+            const textSpan = document.createElement("span");
+            textSpan.textContent = `Option Chain — Expiry: ${expiryStr}${fwdStr}`;
+
+            const toggleBtn = document.createElement("button");
+            toggleBtn.textContent = "+"; // collapsed by default
+            toggleBtn.style.padding = "2px 8px";
+            toggleBtn.style.cursor = "pointer";
+            toggleBtn.style.fontSize = "14px";
+            toggleBtn.style.borderRadius = "6px";
+            toggleBtn.style.border = "1px solid #aaa";
+            toggleBtn.style.background = "#f0f0f0";
+
+            const tableContainer = document.createElement("div");
+            tableContainer.style.display = "none"; // collapsed initially
+            tableContainer.className = "table-container";
+
+            toggleBtn.onclick = () => {
+                if (tableContainer.style.display === "none") {
+                    tableContainer.style.display = "block";
+                    toggleBtn.textContent = "−";
+                } else {
+                    tableContainer.style.display = "none";
+                    toggleBtn.textContent = "+";
+                }
+            };
+
+            header.appendChild(toggleBtn);
+            header.appendChild(textSpan);
+            wrapper.appendChild(header);
+
+            // ---- Build table HTML EXACTLY as before ----
             let html = `
                 <table>
                     <tr>
@@ -212,15 +253,14 @@ function buildOptionChainTables(data) {
                         <th>IV Used</th><th>Bid</th><th>BidSprd</th>
                         <th>NPV</th><th>AskSprd</th><th>Ask</th><th>OI</th>
                         <th>Δ</th><th>Γ</th>
-                    </tr>`;
+                    </tr>
+            `;
 
             for (const pair of group) {
                 const cToken = pair.c_token;
                 const pToken = pair.p_token;
-                // Strike formatting (keep as before)
                 const strikeDisplay = Number(pair.strike).toLocaleString("en-IN");
 
-                // Row id helps in updates
                 html += `
                     <tr id="row_${cToken}">
                         <td id="${cToken}_gamma"></td>
@@ -244,22 +284,28 @@ function buildOptionChainTables(data) {
                         <td id="${pToken}_oi"></td>
                         <td id="${pToken}_delta"></td>
                         <td id="${pToken}_gamma"></td>
-                    </tr>`;
+                    </tr>
+                `;
             }
 
             html += "</table>";
-            optionDiv.insertAdjacentHTML("beforeend", html);
 
-            // After insertion, apply initial shading based on forward (if present)
+            tableContainer.innerHTML = html;
+            wrapper.appendChild(tableContainer);
+            optionDiv.appendChild(wrapper);
+
+            // ---- Apply shading after HTML is inserted ----
             for (const pair of group) {
-                const cToken = pair.c_token;
-                const pToken = pair.p_token;
-                const strikeNum = Number(pair.strike);
-
-                const rowElem = document.getElementById(`row_${cToken}`);
-                if (!rowElem) continue;
-
-                applyShadingForRow(rowElem, strikeNum, forward, cToken, pToken);
+                const rowElem = document.getElementById(`row_${pair.c_token}`);
+                if (rowElem) {
+                    applyShadingForRow(
+                        rowElem,
+                        Number(pair.strike),
+                        forward,
+                        pair.c_token,
+                        pair.p_token
+                    );
+                }
             }
         });
 }

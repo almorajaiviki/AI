@@ -193,9 +193,9 @@ namespace QuantitativeAnalytics
         // ---------- DTO (unchanged shape except the class name) ----------
         public VolSkewDTO ToDTO()
         {
-
             return new VolSkewDTO
             {
+                timeToExpiry = this.TimeToExpiry,     // <- add this line
                 VolCurve = volSpline.RawPoints
                     .Select(p => new VolPoint { Moneyness = p.X, IV = p.Y })
                     .ToList()
