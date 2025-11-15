@@ -310,7 +310,7 @@ function updateMarketSnapshot(data) {
             }
 
             // Update call side
-            updateCell(`${cToken}_gamma`, pair.c_gamm ?? 0, 4);
+            updateCell(`${cToken}_gamma`, pair.c_gamma ?? 0, 4);
             updateCell(`${cToken}_delta`, pair.c_delta ?? 0, 4);
             updateCell(`${cToken}_oi`, pair.c_oi ?? 0, 0, "", true);
             updateCell(`${cToken}_bid`, pair.c_bid ?? 0, 2);
@@ -335,7 +335,7 @@ function updateMarketSnapshot(data) {
             updateCell(`${pToken}_ask`, pair.p_ask ?? 0, 2);
             updateCell(`${pToken}_oi`, pair.p_oi ?? 0, 0, "", true);
             updateCell(`${pToken}_delta`, pair.p_delta ?? 0, 4);
-            updateCell(`${pToken}_gamma`, pair.p_gamm ?? 0, 4);
+            updateCell(`${pToken}_gamma`, pair.p_gamma ?? 0, 4);
 
             // Apply shading based on forward (Option B rules)
             const rowElem = document.getElementById(`row_${cToken}`);
