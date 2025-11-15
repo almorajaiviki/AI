@@ -318,14 +318,16 @@ function updateMarketSnapshot(data) {
             updateCell(`${cToken}_npv`, pair.c_npv ?? 0, 2);
             updateCell(`${cToken}_asksprd`, pair.c_askSpread ?? 0, 2);
             updateCell(`${cToken}_ask`, pair.c_ask ?? 0, 2);
-            updateCell(`${cToken}_ivused`, pair.c_iv_used ?? 0, 2);
+            // CALL IV (percentage)
+            updateCell(`${cToken}_ivused`, (pair.c_iv ?? 0) * 100, 2, "%");
 
             // Update strike cell (string was already present but refresh it)
             const strikeCell = document.getElementById(`${cToken}_strike`);
             if (strikeCell) strikeCell.textContent = Number(pair.strike).toLocaleString("en-IN");
 
             // Update put side
-            updateCell(`${pToken}_ivused`, pair.p_iv_used ?? 0, 2);
+            // PUT IV (percentage)
+            updateCell(`${pToken}_ivused`, (pair.p_iv ?? 0) * 100, 2, "%");
             updateCell(`${pToken}_bid`, pair.p_bid ?? 0, 2);
             updateCell(`${pToken}_bidsprd`, pair.p_bidSpread ?? 0, 2);
             updateCell(`${pToken}_npv`, pair.p_npv ?? 0, 2);
