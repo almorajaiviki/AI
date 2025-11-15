@@ -354,35 +354,42 @@ function updateMarketSnapshot(data) {
    - cToken, pToken: tokens for call/put (used only for locating elements)
    ============================================================ */
 function applyShadingForRow(rowElem, strike, forward, cToken, pToken) {
-    // Remove any previous shading classes
-    rowElem.classList.remove("itm-call", "otm-call", "itm-put", "otm-put");
+    if (!forward || forward <= 0) return;
 
-    if (!forward || forward <= 0) {
-        // No forward available: do not apply ITM/OTM shading
-        return;
+    // Determine ITM/OTM
+    const callIsITM = strike < forward;
+    const putIsITM = strike > forward;
+
+    // Query all cells in this row
+    const cells = rowElem.querySelectorAll("td");
+
+    // CALL block = columns 0–8 (9 cells)
+    const callCells = Array.from(cells).slice(0, 9);
+
+    // STRIKE column = index 9 (we skip shading it)
+    // cells[9]
+
+    // PUT block = columns 10–18 (9 cells)
+    const putCells = Array.from(cells).slice(10, 19);
+
+    // --- Clear old shading ---
+    for (const td of callCells) td.classList.remove("itm-call");
+    for (const td of putCells) td.classList.remove("itm-put");
+
+    // --- Apply Option B shading only to ITM side ---
+    if (callIsITM) {
+        for (const td of callCells) td.classList.add("itm-call");
     }
 
-    // Determine ITM/OTM for calls and puts
-    // Call is ITM if strike < forward
-    // Put  is ITM if strike > forward
-    const callIsITM = strike < forward;
-    const putIsITM  = strike > forward;
+    if (putIsITM) {
+        for (const td of putCells) td.classList.add("itm-put");
+    }
 
-    // Apply classes to the row element to style both sides.
-    // We choose coloring so the row visually indicates which side is ITM/OTM.
-    if (callIsITM) rowElem.classList.add("itm-call");
-    else rowElem.classList.add("otm-call");
-
-    if (putIsITM) rowElem.classList.add("itm-put");
-    else rowElem.classList.add("otm-put");
-
-    // If you want a stricter ATM highlight (optional), you can
-    // also apply a special style when strike is very close to forward.
-    const atmTolerance = 0.005; // 0.5% by default
+    // Optional: ATM subtle highlight
     const moneyness = strike / forward;
+    const atmTolerance = 0.005;
     if (Math.abs(moneyness - 1.0) <= atmTolerance) {
-        // Slightly emphasize ATM by making both sides stronger
-        rowElem.style.boxShadow = "inset 0 0 4px rgba(0,0,0,0.06)";
+        rowElem.style.boxShadow = "inset 0 0 6px rgba(0,0,0,0.06)";
     } else {
         rowElem.style.boxShadow = "";
     }
