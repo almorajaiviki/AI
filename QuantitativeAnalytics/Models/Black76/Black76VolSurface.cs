@@ -4,25 +4,13 @@ namespace QuantitativeAnalytics
     /// Black76 volatility skew surface implemented as a spline over moneyness -> IV.
     /// Implements both IVolSurface and IParametricModelSkew.
     /// </summary>
-    public class Black76VolSkew : IParametricModelSkew
+    internal class Black76VolSkew : IParametricModelSkew
     {
         internal const string AtmVolParam = "ATMVol";
         private readonly NaturalCubicSpline volSpline;
         private readonly double _timeToExpiry;
 
         public double TimeToExpiry => _timeToExpiry;
-
-        /* public Black76VolSkew(
-            IEnumerable<(double strike, double Price, double OI)> callData,
-            IEnumerable<(double strike, double Price, double OI)> putData,
-            double forwardPrice,
-            double riskFreeRate,
-            double timeToExpiry,
-            double OICutoff)
-        {
-            this = Create(callData, putData, forwardPrice, riskFreeRate, timeToExpiry, OICutoff);            
-            
-        } */
 
         // ---------- private ctor for internal rebuilds ----------
         private Black76VolSkew(NaturalCubicSpline spline, double timeToExpiry)
@@ -106,7 +94,7 @@ namespace QuantitativeAnalytics
                 }
             }
 
-            // 4. Build Spline
+            /* // 4. Build Spline
             if (!volData.Any())
                 throw new ArgumentException($"No data points meet the OI cutoff requirement of {OICutoff}.");
 
@@ -118,7 +106,66 @@ namespace QuantitativeAnalytics
 
             var spline = new NaturalCubicSpline(
                 ordered.Select(x => x.m).ToArray(),
-                ordered.Select(x => x.iv).ToArray());
+                ordered.Select(x => x.iv).ToArray()); */
+            // 4. Build Spline (with smoothing to reduce spline wiggles)
+            if (!volData.Any())
+                throw new ArgumentException($"No data points meet the OI cutoff requirement of {OICutoff}.");
+
+            // Collapse duplicates by moneyness and sort
+            var ordered = volData
+                .GroupBy(t => t.m)
+                .Select(g => (m: g.Key, iv: g.Average(x => x.iv)))
+                .OrderBy(t => t.m)
+                .ToArray();
+
+            // Extract arrays
+            var mNodes = ordered.Select(x => x.m).ToArray();
+            var ivNodes = ordered.Select(x => x.iv).ToArray();
+
+            // Smooth the IV nodes to reduce high-frequency noise that causes spline wiggles
+            if (ivNodes.Length >= 3)
+            {
+                var smoothed = new double[ivNodes.Length];
+
+                for (int i = 0; i < ivNodes.Length; ++i)
+                {
+                    if (i == 0)
+                    {
+                        // First point: average with next
+                        smoothed[i] = (ivNodes[i] + ivNodes[i + 1]) / 2.0;
+                    }
+                    else if (i == ivNodes.Length - 1)
+                    {
+                        // Last point: average with previous
+                        smoothed[i] = (ivNodes[i] + ivNodes[i - 1]) / 2.0;
+                    }
+                    else
+                    {
+                        // Middle: median of (previous, current, next)
+                        double a = ivNodes[i - 1];
+                        double b = ivNodes[i];
+                        double c = ivNodes[i + 1];
+                        if ((a <= b && b <= c) || (c <= b && b <= a))
+                            smoothed[i] = b; // b is median
+                        else if ((b <= a && a <= c) || (c <= a && a <= b))
+                            smoothed[i] = a; // a is median
+                        else
+                            smoothed[i] = c; // c is median
+                    }
+                }
+
+                ivNodes = smoothed;
+            }
+
+            // Clamp any negative/NaN iv (safety)
+            for (int i = 0; i < ivNodes.Length; ++i)
+            {
+                if (double.IsNaN(ivNodes[i]) || ivNodes[i] < 0.0)
+                    ivNodes[i] = 0.0;
+            }
+
+            // Build final spline
+            var spline = new NaturalCubicSpline(mNodes, ivNodes);
 
             // 5. assign internal fields
             this.volSpline = spline;
@@ -292,7 +339,7 @@ namespace QuantitativeAnalytics
         /// <summary>
         /// Construct a multi-expiry vol surface directly from existing skews.
         /// </summary>
-        public Black76VolSurface(IEnumerable<Black76VolSkew> skews)
+        internal Black76VolSurface(IEnumerable<Black76VolSkew> skews)
         {
             if (skews == null)
                 throw new ArgumentNullException(nameof(skews));
@@ -336,7 +383,7 @@ namespace QuantitativeAnalytics
         /// <summary>
         /// Read-only list of constituent skew surfaces ordered by expiry.
         /// </summary>
-        public IReadOnlyList<Black76VolSkew> SkewSurfaces => _skews.AsReadOnly();
+        //public IReadOnlyList<Black76VolSkew> SkewSurfaces => _skews.AsReadOnly();
 
         /// <summary>
         /// List of expiry times (TimeToExpiry) from the underlying skews.
