@@ -13,7 +13,7 @@ namespace MarketData
         // Core market data
         private readonly string _indexTradingSymbol;
         private readonly DateTime _initializationTime;
-        private readonly DateTime _expiry;
+        //private readonly DateTime _expiry;
         private readonly double _indexSpot;
         //private readonly double _impliedFuture;
         private readonly uint _token;
@@ -50,8 +50,7 @@ namespace MarketData
         // New signature inserts ForwardCurve? forwardCurve before volSurface (so we can keep
         // change-site localized in MarketData.UpdateAtomicSnapshot)
         public AtomicMarketSnap(
-            DateTime initializationTime,
-            DateTime expiry,
+            DateTime initializationTime,            
             double indexSpot,
             double impliedFuture,
             uint token,
@@ -67,9 +66,7 @@ namespace MarketData
         {
             // === Validation ===
             if (initializationTime == default)
-                throw new ArgumentException("Invalid initialization time", nameof(initializationTime));
-            if (expiry <= initializationTime)
-                throw new ArgumentException("Expiry must be after initialization time", nameof(expiry));
+                throw new ArgumentException("Invalid initialization time", nameof(initializationTime));            
             if (indexSpot <= 0 || impliedFuture <= 0)
                 throw new ArgumentException("Index spot and implied future must be positive");
             if (riskFreeRate < 0)
@@ -83,7 +80,7 @@ namespace MarketData
 
             _indexTradingSymbol = indexTradingSymbol ?? throw new ArgumentNullException(nameof(indexTradingSymbol));
             _initializationTime = initializationTime;
-            _expiry = expiry;
+            //_expiry = expiry;
             _indexSpot = indexSpot;
             //_impliedFuture = impliedFuture;
             _token = token;
@@ -108,7 +105,7 @@ namespace MarketData
         // === Core Properties ===
         public string IndexTradingSymbol => _indexTradingSymbol;
         public DateTime InitializationTime => _initializationTime;
-        public DateTime Expiry => _expiry;
+        //public DateTime Expiry => _expiry;
         public double IndexSpot => _indexSpot;
         //public double ImpliedFuture => _impliedFuture;
         public double RiskFreeRate => _riskFreeRate;
@@ -277,14 +274,14 @@ namespace MarketData
             // === Assign core scalar fields ===
             _indexTradingSymbol = dto.Index ?? string.Empty;
             _initializationTime = dto.SnapTime;
-            _expiry = dto.Expiry;
+            //_expiry = dto.Expiry;
             _indexSpot = dto.Spot;
             //_impliedFuture = dto.ImpliedFuture;
             _riskFreeRate = dto.RiskFreeRate;
             _divYield = dto.DivYield;
             _calendar = calendar;
 
-            double tte = _calendar.GetYearFraction(_initializationTime, _expiry);
+            //double tte = _calendar.GetYearFraction(_initializationTime, _expiry);
 
             // === Rebuild VolSurface ===
             if (dto.VolSurface == null)
@@ -332,6 +329,7 @@ namespace MarketData
                         oi: pair.C_oi
                         );
 
+                    double tte = _calendar.GetYearFraction(_initializationTime, pair.expiry);
                     var callGreeks = new OptionGreeks(callSnap, _indexSpot, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator);                     
                     
                     // Put snapshot + greeks

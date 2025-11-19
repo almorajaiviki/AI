@@ -258,8 +258,7 @@ namespace MarketData
 
                 // Create the atomic snapshot and include the forwardCurve (may be null)
                 _atomicSnapshot = new AtomicMarketSnap(
-                    _initializationTime,
-                    expiry, // Use variable
+                    _initializationTime,                    
                     indexSnapshot.IndexSpot,
                     forwardPrice,
                     indexSnapshot.Token,

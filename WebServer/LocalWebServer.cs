@@ -78,7 +78,7 @@ namespace Server
                     string json = System.Text.Json.JsonSerializer.Serialize(snapshotDto, new System.Text.Json.JsonSerializerOptions
                     {
                         PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault,
+                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
                         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                     });
                     msg = Encoding.UTF8.GetBytes(json);

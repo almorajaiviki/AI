@@ -12,7 +12,7 @@ namespace QuantitativeAnalytics
 
         public double TimeToExpiry => _timeToExpiry;
 
-        public Black76VolSkew(
+        /* public Black76VolSkew(
             IEnumerable<(double strike, double Price, double OI)> callData,
             IEnumerable<(double strike, double Price, double OI)> putData,
             double forwardPrice,
@@ -20,9 +20,9 @@ namespace QuantitativeAnalytics
             double timeToExpiry,
             double OICutoff)
         {
-            var tempSurface = Create(callData, putData, forwardPrice, riskFreeRate, timeToExpiry, OICutoff);
-            this.volSpline = tempSurface.volSpline;
-        }
+            this = Create(callData, putData, forwardPrice, riskFreeRate, timeToExpiry, OICutoff);            
+            
+        } */
 
         // ---------- private ctor for internal rebuilds ----------
         private Black76VolSkew(NaturalCubicSpline spline, double timeToExpiry)
@@ -31,7 +31,7 @@ namespace QuantitativeAnalytics
             _timeToExpiry = timeToExpiry;
         }
 
-        private static Black76VolSkew Create(
+        public Black76VolSkew (
             IEnumerable<(double strike, double Price, double OI)> callData,
             IEnumerable<(double strike, double Price, double OI)> putData,
             double forwardPrice,
@@ -120,8 +120,9 @@ namespace QuantitativeAnalytics
                 ordered.Select(x => x.m).ToArray(),
                 ordered.Select(x => x.iv).ToArray());
 
-            // 5. Return
-            return new Black76VolSkew(spline, timeToExpiry);
+            // 5. assign internal fields
+            this.volSpline = spline;
+            this._timeToExpiry = timeToExpiry;
         }
 
         // ---------- IVolSurface ----------
@@ -480,7 +481,7 @@ namespace QuantitativeAnalytics
 
             foreach (var skew in _skews)
             {
-                var skewDto = skew.ToDTO() as VolSkewDTO;
+                var skewDto = skew.ToDTO();
                 skewDto.timeToExpiry = skew.TimeToExpiry;
                 dto.Skews.Add(skewDto);
             }
