@@ -248,28 +248,6 @@ namespace QuantitativeAnalytics
         }
 
         /// <summary>
-        /// Evaluate piecewise-linear put price P(K) using the backbone nodes.
-        /// Extrapolates linearly using end segments.
-        /// </summary>
-        private double PriceAtK(double K)
-        {
-            if (K <= strikes[0] + StrikeEqualityTol) return putPrices[0];
-            if (K >= strikes[n - 1] - StrikeEqualityTol) return putPrices[n - 1];
-
-            int idx = Array.BinarySearch(strikes, K);
-            if (idx >= 0) return putPrices[idx];
-
-            int j = ~idx - 1;
-            if (j < 0) j = 0;
-            if (j >= n - 1) j = n - 2;
-
-            double xL = strikes[j], xR = strikes[j + 1];
-            double yL = putPrices[j], yR = putPrices[j + 1];
-            double t = (K - xL) / (xR - xL);
-            return yL + t * (yR - yL);
-        }
-
-        /// <summary>
         /// Public GetVol: returns implied vol for input moneyness m = K / forward.
         /// Uses piecewise-linear price interpolation and inverts to implied vol (warm-started from node IVs).
         /// </summary>
