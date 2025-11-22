@@ -220,7 +220,7 @@ namespace MarketData
                 ));
             }
 
-            return new Black76VolSurface(skewParamsList);
+            return new Black76PriceSpaceVolSurface(skewParamsList);
         }
 
         private void UpdateAtomicSnapshot(IParametricModelSurface volSurface, ForwardCurve? forwardCurve)

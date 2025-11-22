@@ -1,3 +1,5 @@
+using QuantitativeAnalytics.Interpolation;
+
 namespace QuantitativeAnalytics
 {
     /// <summary>
@@ -7,13 +9,13 @@ namespace QuantitativeAnalytics
     internal class Black76VolSkew : IParametricModelSkew
     {
         internal const string AtmVolParam = "ATMVol";
-        private readonly NaturalCubicSpline volSpline;
+        private readonly MonotoneCubicSpline volSpline;
         private readonly double _timeToExpiry;
 
         public double TimeToExpiry => _timeToExpiry;
 
         // ---------- private ctor for internal rebuilds ----------
-        private Black76VolSkew(NaturalCubicSpline spline, double timeToExpiry)
+        private Black76VolSkew(MonotoneCubicSpline spline, double timeToExpiry)
         {
             volSpline = spline ?? throw new ArgumentNullException(nameof(spline));
             _timeToExpiry = timeToExpiry;
@@ -108,64 +110,142 @@ namespace QuantitativeAnalytics
                 ordered.Select(x => x.m).ToArray(),
                 ordered.Select(x => x.iv).ToArray()); */
             // 4. Build Spline (with smoothing to reduce spline wiggles)
+            // 4. Build price-domain arbitrage-free prices then spline
             if (!volData.Any())
                 throw new ArgumentException($"No data points meet the OI cutoff requirement of {OICutoff}.");
 
-            // Collapse duplicates by moneyness and sort
-            var ordered = volData
-                .GroupBy(t => t.m)
-                .Select(g => (m: g.Key, iv: g.Average(x => x.iv)))
-                .OrderBy(t => t.m)
-                .ToArray();
+            // We purposely collected volData earlier as (m, iv). For projector we need strike + market price + OI + isCall.
+            // If volData currently only holds (m, iv), reconstruct from allStrikes selection above or change earlier loop to capture (strike, price, oi, isCall).
+            // For simplicity, assume we can rebuild a list "pricePoints" with (strike, price, oi, isCall).
+            // If you didn't keep that, change the top loop to add price points instead of only m/iv.
 
-            // Extract arrays
-            var mNodes = ordered.Select(x => x.m).ToArray();
-            var ivNodes = ordered.Select(x => x.iv).ToArray();
+            var pricePoints = new List<(double strike, double price, double oi, bool isCall)>();
 
-            // Smooth the IV nodes to reduce high-frequency noise that causes spline wiggles
-            if (ivNodes.Length >= 3)
+            // Recreate pricePoints from available data sources (callDataDict / putDataDict were defined earlier)
+            foreach (var strike in allStrikes.OrderBy(s => s))
             {
-                var smoothed = new double[ivNodes.Length];
+                bool hasCall = callDataDict.TryGetValue(strike, out var call);
+                bool hasPut = putDataDict.TryGetValue(strike, out var put);
 
-                for (int i = 0; i < ivNodes.Length; ++i)
+                (double Price, double OI, bool isCall) selectedOption = (0, 0, false);
+                bool optionSelected = false;
+
+                if (hasCall && hasPut)
                 {
-                    if (i == 0)
+                    if (call.OI >= put.OI)
                     {
-                        // First point: average with next
-                        smoothed[i] = (ivNodes[i] + ivNodes[i + 1]) / 2.0;
-                    }
-                    else if (i == ivNodes.Length - 1)
-                    {
-                        // Last point: average with previous
-                        smoothed[i] = (ivNodes[i] + ivNodes[i - 1]) / 2.0;
+                        if (call.OI >= OICutoff)
+                        {
+                            selectedOption = (call.Price, call.OI, true);
+                            optionSelected = true;
+                        }
                     }
                     else
                     {
-                        // Middle: median of (previous, current, next)
-                        double a = ivNodes[i - 1];
-                        double b = ivNodes[i];
-                        double c = ivNodes[i + 1];
-                        if ((a <= b && b <= c) || (c <= b && b <= a))
-                            smoothed[i] = b; // b is median
-                        else if ((b <= a && a <= c) || (c <= a && a <= b))
-                            smoothed[i] = a; // a is median
-                        else
-                            smoothed[i] = c; // c is median
+                        if (put.OI >= OICutoff)
+                        {
+                            selectedOption = (put.Price, put.OI, false);
+                            optionSelected = true;
+                        }
+                    }
+                }
+                else if (hasCall)
+                {
+                    if (call.OI >= OICutoff)
+                    {
+                        selectedOption = (call.Price, call.OI, true);
+                        optionSelected = true;
+                    }
+                }
+                else if (hasPut)
+                {
+                    if (put.OI >= OICutoff)
+                    {
+                        selectedOption = (put.Price, put.OI, false);
+                        optionSelected = true;
                     }
                 }
 
-                ivNodes = smoothed;
+                if (optionSelected)
+                {
+                    pricePoints.Add((strike, selectedOption.Price, selectedOption.OI, selectedOption.isCall));
+                }
             }
 
-            // Clamp any negative/NaN iv (safety)
-            for (int i = 0; i < ivNodes.Length; ++i)
+            if (!pricePoints.Any())
+                throw new ArgumentException($"No option prices after OI filter for OICutoff={OICutoff}.");
+
+            // Build arrays for projector: strikes[] and prices[] (project in put-price domain)
+            double discount = Math.Exp(-riskFreeRate * timeToExpiry);
+            var strikesArr = pricePoints.Select(p => p.strike).ToArray();
+            var pricesArr = new double[pricePoints.Count];
+            var weightsArr = new double[pricePoints.Count];
+
+            for (int i = 0; i < pricePoints.Count; ++i)
             {
-                if (double.IsNaN(ivNodes[i]) || ivNodes[i] < 0.0)
-                    ivNodes[i] = 0.0;
+                var p = pricePoints[i];
+                // Convert call mid -> put mid using put-call parity for forward-based pricing:
+                // Call - Put = exp(-rT) * (forward - K)  => Put = Call - discount*(forwardPrice - K)
+                double putPrice;
+                if (p.isCall)
+                    putPrice = p.price - discount * (forwardPrice - p.strike);
+                else
+                    putPrice = p.price;
+
+                // safety: clamp to intrinsic bounds
+                double intrinsic = Math.Max(0.0, p.strike - forwardPrice * discount);
+                putPrice = Math.Max(putPrice, intrinsic);
+
+                pricesArr[i] = putPrice;
+                // weights: prefer using OI (but keep minimum 1.0 to avoid zeros)
+                weightsArr[i] = Math.Max(1.0, p.oi);
             }
 
-            // Build final spline
-            var spline = new NaturalCubicSpline(mNodes, ivNodes);
+            // Call projector - OSQP call if available, otherwise fallback inside ProjectPricesToNoArb
+            var adjustedPrices = Volatility.VolArbitrageProjector.ProjectPricesToNoArb(
+                strikesArr,
+                pricesArr,
+                forwardPrice,
+                riskFreeRate,
+                timeToExpiry,
+                weightsArr,
+                osqpAvailable: true);
+
+            // Convert adjusted put-prices back to implied vol (use Black76.ComputeIV for puts)
+            var mNodes = new double[strikesArr.Length];
+            var ivNodes = new double[strikesArr.Length];
+            for (int i = 0; i < strikesArr.Length; ++i)
+            {
+                double K = strikesArr[i];
+                double adjPut = adjustedPrices[i];
+                mNodes[i] = K / forwardPrice;
+
+                // Use Black76.ComputeIV: isCall = false (we projected puts)
+                // initialGuess can be the old iv if you kept it; fallback seed=0.2
+                double iv = Black76.ComputeIV(
+                    false,              // isCall -> false because we used put prices
+                    forwardPrice,
+                    K,
+                    timeToExpiry,
+                    riskFreeRate,
+                    adjPut,
+                    initialGuess: 0.2);
+
+                // safety clamp
+                if (double.IsNaN(iv) || iv < 0.0) iv = 0.0;
+                ivNodes[i] = iv;
+            }
+
+            // Ensure ordering by moneyness (should be already, but be defensive)
+            var orderedPairs = mNodes
+                .Select((mIdx, ix) => (m: mNodes[ix], iv: ivNodes[ix]))
+                .OrderBy(p => p.m)
+                .ToArray();
+
+            var spline = new MonotoneCubicSpline(
+                orderedPairs.Select(x => x.m).ToArray(),
+                orderedPairs.Select(x => x.iv).ToArray());
+
 
             // 5. assign internal fields
             this.volSpline = spline;
@@ -241,12 +321,12 @@ namespace QuantitativeAnalytics
         // ---------- DTO (unchanged shape except the class name) ----------
         public VolSkewDTO ToDTO()
         {
+            var (X, Y) = volSpline.RawPoints;
+
             return new VolSkewDTO
             {
-                timeToExpiry = this.TimeToExpiry,     // <- add this line
-                VolCurve = volSpline.RawPoints
-                    .Select(p => new VolPoint { Moneyness = p.X, IV = p.Y })
-                    .ToList()
+                timeToExpiry = this.TimeToExpiry,
+                VolCurve = X.Zip(Y, (x, y) => new VolPoint { Moneyness = x, IV = y }).ToList()
             };
         }
 
@@ -260,7 +340,7 @@ namespace QuantitativeAnalytics
 
             var ordered = dto.VolCurve.OrderBy(p => p.Moneyness).ToArray();
 
-            var spline = new NaturalCubicSpline(
+            var spline = new MonotoneCubicSpline(
                 ordered.Select(p => p.Moneyness).ToArray(),
                 ordered.Select(p => p.IV).ToArray());
 

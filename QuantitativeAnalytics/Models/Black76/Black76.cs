@@ -5,7 +5,7 @@ namespace QuantitativeAnalytics
         /// <summary>
         /// Computes the price (NPV) of a European option using the Black-76 model.
         /// </summary>
-        private static double NPVIV(bool isCall, double forwardPrice, double strike, double riskFreeRate, double iv, double timeToExpiry)
+        internal static double NPVIV(bool isCall, double forwardPrice, double strike, double riskFreeRate, double iv, double timeToExpiry)
         {
             if (timeToExpiry <= 0)
                 return isCall ? Math.Max(forwardPrice - strike, 0) : Math.Max(strike - forwardPrice, 0);
