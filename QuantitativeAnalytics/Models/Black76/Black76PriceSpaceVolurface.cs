@@ -248,34 +248,48 @@ namespace QuantitativeAnalytics
         }
 
         /// <summary>
-        /// Public GetVol: returns implied vol for input moneyness m = K / forward.
+        /// Public GetVol: returns implied vol for input log-moneyness (ln(K / forward)).
+        /// Accepts log-moneyness to make forward-percentage bumps symmetric.
         /// Uses piecewise-linear price interpolation and inverts to implied vol (warm-started from node IVs).
         /// </summary>
-        public double GetVol(double moneyness)
+        public double GetVol(double logMoneyness)
         {
-            if (moneyness <= 0) return 0.0;
-            double Kq = moneyness * forward;
+            // compute strike from log-moneyness
+            double Kq;
+            try
+            {
+                Kq = Math.Exp(logMoneyness) * forward;
+            }
+            catch
+            {
+                // if input is invalid (NaN/Inf) guard and return 0
+                return 0.0;
+            }
+
+            if (double.IsNaN(Kq) || Kq <= 0.0) return 0.0;
 
             // exact node match?
             int idx = Array.BinarySearch(strikes, Kq);
             if (idx >= 0)
             {
-                double ivExact = ivNodes[idx];
-                return ivExact;
+                return ivNodes[idx];
             }
 
             // use cache for repeated non-node queries
             if (nonNodeIvCache.TryGetValue(Kq, out double cachedIv))
                 return cachedIv;
 
-            // find segment
+            // find segment safely
             int seg = ~Array.BinarySearch(strikes, Kq) - 1;
             if (seg < 0) seg = 0;
             if (seg > n - 2) seg = n - 2;
 
             double Kleft = strikes[seg], Kright = strikes[seg + 1];
             double Pleft = putPrices[seg], Pright = putPrices[seg + 1];
-            double t = (Kq - Kleft) / (Kright - Kleft);
+
+            // linear interpolation in price-space
+            double denom = (Kright - Kleft);
+            double t = denom == 0.0 ? 0.0 : (Kq - Kleft) / denom;
             double Pq = Pleft + t * (Pright - Pleft);
 
             // warm start iv by linear interp of node ivs
@@ -298,7 +312,6 @@ namespace QuantitativeAnalytics
             nonNodeIvCache[Kq] = ivq;
             return ivq;
         }
-
         // Fallback bisection inversion for put price -> implied vol (very robust)
         private double InvertPutPriceBisection(double price, double F, double K, double rLocal, double T)
         {
@@ -353,7 +366,7 @@ namespace QuantitativeAnalytics
         public IReadOnlyDictionary<string, double> GetParameters()
         {
             // Minimal param view: ATM vol (m=1.0)
-            double atmVol = GetVol(1.0);
+            double atmVol = GetVol(0.0); // ATM in log-moneyness
             return new Dictionary<string, double> { { "ATMVol", atmVol } };
         }
 
@@ -702,7 +715,7 @@ namespace QuantitativeAnalytics
 
         public IEnumerable<(string parameterName, string expiryString, double value)> GetParameters()
         {
-            double atm = _skews[0].GetVol(1.0);
+            double atm = _skews[0].GetVol(0);
             yield return ("ATMVol", "Spot", atm);
         }
     }

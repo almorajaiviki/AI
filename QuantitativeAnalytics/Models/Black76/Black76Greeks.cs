@@ -27,9 +27,14 @@ namespace QuantitativeAnalytics
 
             double bumpedDownForward = forwardPrice * (1 - bumpSize);
             double npvDown = NPV(productType, isCall, Spot, bumpedDownForward, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
-            Console.WriteLine($"Inside gamma calcs, npvUp: {npvUp}, npvAt: {npvAt}, npvDown: {npvDown}");
+            //Console.WriteLine($"Inside gamma calcs, npvUp: {npvUp}, npvAt: {npvAt}, npvDown: {npvDown}");
 
-            return (npvUp - 2 * npvAt + npvDown);
+            double gamma = npvUp - 2*npvAt + npvDown;
+            // Clamp tiny numerical negatives
+            if (gamma < 0 && gamma > -1e-4)
+                gamma = 0.0;
+
+            return gamma;
         }
 
         internal static IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double Spot, double forwardPrice, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface volSurface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
