@@ -368,8 +368,9 @@ namespace QuantitativeAnalytics
             var volPoints = new List<VolPoint>(n);
             for (int i = 0; i < n; ++i)
             {
-                double m = strikes[i] / forward;
-                volPoints.Add(new VolPoint { Moneyness = m, IV = ivNodes[i] });
+                // store ln(K/F) in DTO
+                double logM = Math.Log(strikes[i] / forward);
+                volPoints.Add(new VolPoint { LogMoneyness = logM, IV = ivNodes[i] });
             }
             return new VolSkewDTO { timeToExpiry = _timeToExpiry, VolCurve = volPoints };
         }
@@ -380,8 +381,9 @@ namespace QuantitativeAnalytics
             if (dto.VolCurve == null || dto.VolCurve.Count == 0) throw new ArgumentException("dto.VolCurve empty");
 
             // Build arrays from dto (dto.timeToExpiry used)
-            var ordered = dto.VolCurve.OrderBy(p => p.Moneyness).ToArray();
-            var strikesArr = ordered.Select(p => p.Moneyness * forward).ToArray();
+            // dto.VolCurve now contains LogMoneyness (ln(K/F)) values
+            var ordered = dto.VolCurve.OrderBy(p => p.LogMoneyness).ToArray();
+            var strikesArr = ordered.Select(p => Math.Exp(p.LogMoneyness) * forward).ToArray();
             var ivArr = ordered.Select(p => p.IV).ToArray();
 
             // Compute putPrices from ivs using Black76.NPVIV signature

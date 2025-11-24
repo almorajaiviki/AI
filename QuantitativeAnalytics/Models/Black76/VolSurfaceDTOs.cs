@@ -4,7 +4,8 @@ namespace QuantitativeAnalytics
 {
     public class VolPoint
     {
-        public double Moneyness { get; set; }
+        // Strict-mode: store log-moneyness (ln(K/F))
+        public double LogMoneyness { get; set; }
         public double IV { get; set; }
     }
 

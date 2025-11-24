@@ -27,6 +27,7 @@ namespace QuantitativeAnalytics
 
             double bumpedDownForward = forwardPrice * (1 - bumpSize);
             double npvDown = NPV(productType, isCall, Spot, bumpedDownForward, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
+            Console.WriteLine($"Inside gamma calcs, npvUp: {npvUp}, npvAt: {npvAt}, npvDown: {npvDown}");
 
             return (npvUp - 2 * npvAt + npvDown);
         }

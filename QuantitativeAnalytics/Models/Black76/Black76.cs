@@ -47,8 +47,9 @@ namespace QuantitativeAnalytics
                     if (timeToExpiry <= 0)
                         return isCall ? Math.Max(forwardPrice - strike, 0) : Math.Max(strike - forwardPrice, 0);
 
-                    double moneyness = strike / forwardPrice;
-                    double iv = volSurface.GetVol(timeToExpiry, moneyness);
+                    // convert to log-moneyness (ln(K/F))
+                    double logMoneyness = Math.Log(strike / forwardPrice);
+                    double iv = volSurface.GetVol(timeToExpiry, logMoneyness);
 
                     return NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv, timeToExpiry);
 
@@ -88,7 +89,29 @@ namespace QuantitativeAnalytics
                 if (iv <= 0) iv = ivBump; // Prevent negative volatility
             }
 
-            return iv; // Return last computed IV if convergence not achieved
+            // Fallback to bisection if Newton-Raphson failed to converge or produced invalid result
+            return ComputeIVBisection(isCall, forwardPrice, strike, timeToExpiry, riskFreeRate, marketPrice);
+        }
+
+        /// <summary>
+        /// Robust bisection method for IV calculation when Newton-Raphson fails.
+        /// </summary>
+        private static double ComputeIVBisection(
+            bool isCall,
+            double forwardPrice,
+            double strike,
+            double timeToExpiry,
+            double riskFreeRate,
+            double marketPrice)
+        {
+            double lo = 1e-6, hi = 5.0;
+            for (int iter = 0; iter < 100; ++iter)
+            {
+                double mid = 0.5 * (lo + hi);
+                double p = NPVIV(isCall, forwardPrice, strike, riskFreeRate, mid, timeToExpiry);
+                if (p > marketPrice) hi = mid; else lo = mid;
+            }
+            return 0.5 * (lo + hi);
         }
     }
 }

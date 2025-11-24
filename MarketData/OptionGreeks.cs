@@ -28,11 +28,13 @@ namespace MarketData
 
             bool isCall = optionSnapshot.OptionType == OptionType.CE;
             double strike = optionSnapshot.Strike;
-            double moneyness = strike / impliedFuture;
+            // compute log-moneyness (ln(K/F)) to match DTO/storage convention
+            double logMoneyness = Math.Log(strike / impliedFuture);
             double dividendYield = 0.0; // Hardcoded for now
-            var productType = ProductType.Option;            
+            var productType = ProductType.Option;
 
-            IV_Used = volSurface.GetVol(timeToExpiry ,moneyness);
+            // ask the surface using log-moneyness
+            IV_Used = volSurface.GetVol(timeToExpiry, logMoneyness);
 
             //for options, the decision to use benchmark future or spot is made in MarketData class
             NPV = greeksCalculator.NPV(
