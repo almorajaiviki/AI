@@ -178,136 +178,93 @@ function buildOptionChainTables(data) {
         groups[exp].push(pair);
     }
 
-    // === Render a collapsible table for each expiry ===
-    Object.keys(groups)
-        .sort((a, b) => new Date(a) - new Date(b))
-        .forEach(expiry => {
-            const group = groups[expiry];
+    // === Build each expiry section ===
+    Object.entries(groups).forEach(([exp, group]) => {
+        const wrapper = document.createElement("div");
 
-            // Lookup forward for this expiry
-            let forward = null;
-            if (data.forwardByExpiry && data.forwardByExpiry[expiry] != null) {
-                forward = Number(data.forwardByExpiry[expiry]);
-            }
+        // Forward for this expiry
+        let forward = null;
+        if (data.forwardByExpiry && data.forwardByExpiry[exp] != null) {
+            forward = Number(data.forwardByExpiry[exp]);
+        }
 
-            // ---- Wrapper container for this expiry ----
-            const wrapper = document.createElement("div");
-            wrapper.className = "expiry-wrapper";
-            wrapper.style.marginBottom = "12px";
+        // --- Expiry Header (modified with span ID for updates) ---
+        wrapper.innerHTML = `
+            <div class="expiry-header">
+                <b>Expiry:</b> ${exp}
+                <b>Forward:</b> <span id="expFwd_${exp}">${forward ?? "-"}</span>
+            </div>
+        `;
 
-            // ---- Header with toggle button ----
-            const header = document.createElement("h3");
-            header.className = "expiry-header";
-            header.style.display = "flex";
-            header.style.alignItems = "center";
-            header.style.gap = "10px";
+        // --- Option Table ---
+        const tableContainer = document.createElement("div");
+        let html = `
+            <table>
+                <tr>
+                    <th colspan="9" style="text-align:center;">CALLS</th>
+                    <th rowspan="2" style="text-align:center;">Strike<br/>(% of Forward)</th>
+                    <th colspan="9" style="text-align:center;">PUTS</th>
+                </tr>
+                <tr>
+                    <th>Gamma</th><th>Delta</th><th>OI</th><th>Bid</th><th>BidSprd</th>
+                    <th>NPV</th><th>AskSprd</th><th>Ask</th><th>IV Used</th>
+                    <th>IV Used</th><th>Bid</th><th>BidSprd</th><th>NPV</th>
+                    <th>AskSprd</th><th>Ask</th><th>OI</th><th>Delta</th><th>Gamma</th>
+                </tr>
+        `;
 
-            const expiryStr = new Date(expiry).toLocaleString("en-GB");
-            const fwdStr = (forward !== null)
-                ? ` | Forward: ${formatNumber(forward)}`
-                : "";
+        // --- Build all rows ---
+        for (const pair of group) {
+            const cToken = pair.c_token;
+            const pToken = pair.p_token;
 
-            const textSpan = document.createElement("span");
-            textSpan.textContent = `Option Chain — Expiry: ${expiryStr}${fwdStr}`;
+            const strikeDisplay = Number(pair.strike).toLocaleString("en-IN");
+            html += `
+                <tr id="row_${cToken}">
+                    <td id="${cToken}_gamma"></td>
+                    <td id="${cToken}_delta"></td>
+                    <td id="${cToken}_oi"></td>
+                    <td id="${cToken}_bid"></td>
+                    <td id="${cToken}_bidsprd"></td>
+                    <td id="${cToken}_npv"></td>
+                    <td id="${cToken}_asksprd"></td>
+                    <td id="${cToken}_ask"></td>
+                    <td id="${cToken}_ivused"></td>
 
-            const toggleBtn = document.createElement("button");
-            toggleBtn.textContent = "+"; // collapsed by default
-            toggleBtn.style.padding = "2px 8px";
-            toggleBtn.style.cursor = "pointer";
-            toggleBtn.style.fontSize = "14px";
-            toggleBtn.style.borderRadius = "6px";
-            toggleBtn.style.border = "1px solid #aaa";
-            toggleBtn.style.background = "#f0f0f0";
+                    <td id="${cToken}_strike" class="strike">${strikeDisplay}</td>
 
-            const tableContainer = document.createElement("div");
-            tableContainer.style.display = "none"; // collapsed initially
-            tableContainer.className = "table-container";
-
-            toggleBtn.onclick = () => {
-                if (tableContainer.style.display === "none") {
-                    tableContainer.style.display = "block";
-                    toggleBtn.textContent = "−";
-                } else {
-                    tableContainer.style.display = "none";
-                    toggleBtn.textContent = "+";
-                }
-            };
-
-            header.appendChild(toggleBtn);
-            header.appendChild(textSpan);
-            wrapper.appendChild(header);
-
-            // ---- Build table HTML EXACTLY as before ----
-            let html = `
-                <table>
-                    <tr>
-                        <th colspan="9">CALLS</th>
-                        <th>Strike</th>
-                        <th colspan="9">PUTS</th>
-                    </tr>
-                    <tr>
-                        <th>Γ</th><th>Δ</th>
-                        <th>OI</th><th>Bid</th><th>BidSprd</th><th>NPV</th>
-                        <th>AskSprd</th><th>Ask</th><th>IV Used</th>
-                        <th>Strike</th>
-                        <th>IV Used</th><th>Bid</th><th>BidSprd</th>
-                        <th>NPV</th><th>AskSprd</th><th>Ask</th><th>OI</th>
-                        <th>Δ</th><th>Γ</th>
-                    </tr>
+                    <td id="${pToken}_ivused"></td>
+                    <td id="${pToken}_bid"></td>
+                    <td id="${pToken}_bidsprd"></td>
+                    <td id="${pToken}_npv"></td>
+                    <td id="${pToken}_asksprd"></td>
+                    <td id="${pToken}_ask"></td>
+                    <td id="${pToken}_oi"></td>
+                    <td id="${pToken}_delta"></td>
+                    <td id="${pToken}_gamma"></td>
+                </tr>
             `;
+        }
 
-            for (const pair of group) {
-                const cToken = pair.c_token;
-                const pToken = pair.p_token;
-                const strikeDisplay = Number(pair.strike).toLocaleString("en-IN");
+        html += "</table>";
+        tableContainer.innerHTML = html;
+        wrapper.appendChild(tableContainer);
+        optionDiv.appendChild(wrapper);
 
-                html += `
-                    <tr id="row_${cToken}">
-                        <td id="${cToken}_gamma"></td>
-                        <td id="${cToken}_delta"></td>
-                        <td id="${cToken}_oi"></td>
-                        <td id="${cToken}_bid"></td>
-                        <td id="${cToken}_bidsprd"></td>
-                        <td id="${cToken}_npv"></td>
-                        <td id="${cToken}_asksprd"></td>
-                        <td id="${cToken}_ask"></td>
-                        <td id="${cToken}_ivused"></td>
-
-                        <td id="${cToken}_strike" class="strike">${strikeDisplay}</td>
-
-                        <td id="${pToken}_ivused"></td>
-                        <td id="${pToken}_bid"></td>
-                        <td id="${pToken}_bidsprd"></td>
-                        <td id="${pToken}_npv"></td>
-                        <td id="${pToken}_asksprd"></td>
-                        <td id="${pToken}_ask"></td>
-                        <td id="${pToken}_oi"></td>
-                        <td id="${pToken}_delta"></td>
-                        <td id="${pToken}_gamma"></td>
-                    </tr>
-                `;
+        // --- Apply shading based on forward ---
+        for (const pair of group) {
+            const rowElem = document.getElementById(`row_${pair.c_token}`);
+            if (rowElem) {
+                applyShadingForRow(
+                    rowElem,
+                    Number(pair.strike),
+                    forward,
+                    pair.c_token,
+                    pair.p_token
+                );
             }
-
-            html += "</table>";
-
-            tableContainer.innerHTML = html;
-            wrapper.appendChild(tableContainer);
-            optionDiv.appendChild(wrapper);
-
-            // ---- Apply shading after HTML is inserted ----
-            for (const pair of group) {
-                const rowElem = document.getElementById(`row_${pair.c_token}`);
-                if (rowElem) {
-                    applyShadingForRow(
-                        rowElem,
-                        Number(pair.strike),
-                        forward,
-                        pair.c_token,
-                        pair.p_token
-                    );
-                }
-            }
-        });
+        }
+    });
 }
 
 /* ============================================================
@@ -315,10 +272,10 @@ function buildOptionChainTables(data) {
    - uses per-pair expiry to lookup forward
    ============================================================ */
 function updateMarketSnapshot(data) {
-    // Market info
+
+    // === Market info ===
     updateCell("IndexSpot", data.spot, 2, "", true);
 
-    // ImpFut field was removed server-side; keep the cell empty or show dash
     const ImpFutElem = document.getElementById("ImpFut");
     if (ImpFutElem) ImpFutElem.textContent = "-";
 
@@ -330,12 +287,13 @@ function updateMarketSnapshot(data) {
         fractionalSecondDigits: 3
     }));
 
-    // Futures
+    // === Futures ===
     if (data.futures) {
         for (const f of data.futures) {
             const snap = f.futureSnapshot;
             const greeks = f.futureGreeks;
             const token = snap.token;
+
             updateCell(`f_${token}_Bid`, snap.bid, 2);
             updateCell(`f_${token}_NPV`, greeks?.npv ?? 0, 2);
             updateCell(`f_${token}_Ask`, snap.ask, 2);
@@ -343,19 +301,28 @@ function updateMarketSnapshot(data) {
         }
     }
 
-    // Option pairs updates: use pair.expiry to lookup forward
+    // === Option updates ===
     if (data.optionPairs) {
         for (const pair of data.optionPairs) {
             const cToken = pair.c_token;
             const pToken = pair.p_token;
 
-            // Lookup forward for this pair's expiry
+            // === NEW: Update expiry forward header ===
+            if (data.forwardByExpiry && data.forwardByExpiry[pair.expiry] != null) {
+                const fwdHeader = document.getElementById(`expFwd_${pair.expiry}`);
+                if (fwdHeader) {
+                    fwdHeader.textContent =
+                        Number(data.forwardByExpiry[pair.expiry]).toFixed(2);
+                }
+            }
+
+            // Lookup forward for shading
             let forward = null;
-            if (data.forwardByExpiry && data.forwardByExpiry[pair.expiry] !== undefined && data.forwardByExpiry[pair.expiry] !== null) {
+            if (data.forwardByExpiry && data.forwardByExpiry[pair.expiry] != null) {
                 forward = Number(data.forwardByExpiry[pair.expiry]);
             }
 
-            // Update call side
+            // === Update CALL side ===
             updateCell(`${cToken}_gamma`, pair.c_gamma ?? 0, 4);
             updateCell(`${cToken}_delta`, pair.c_delta ?? 0, 4);
             updateCell(`${cToken}_oi`, pair.c_oi ?? 0, 0, "", true);
@@ -364,15 +331,13 @@ function updateMarketSnapshot(data) {
             updateCell(`${cToken}_npv`, pair.c_npv ?? 0, 2);
             updateCell(`${cToken}_asksprd`, pair.c_askSpread ?? 0, 2);
             updateCell(`${cToken}_ask`, pair.c_ask ?? 0, 2);
-            // CALL IV (percentage)
             updateCell(`${cToken}_ivused`, (pair.c_iv ?? 0) * 100, 2, "%");
 
-            // Update strike cell (string was already present but refresh it)
             const strikeCell = document.getElementById(`${cToken}_strike`);
-            if (strikeCell) strikeCell.textContent = Number(pair.strike).toLocaleString("en-IN");
+            if (strikeCell)
+                strikeCell.textContent = Number(pair.strike).toLocaleString("en-IN");
 
-            // Update put side
-            // PUT IV (percentage)
+            // === Update PUT side ===
             updateCell(`${pToken}_ivused`, (pair.p_iv ?? 0) * 100, 2, "%");
             updateCell(`${pToken}_bid`, pair.p_bid ?? 0, 2);
             updateCell(`${pToken}_bidsprd`, pair.p_bidSpread ?? 0, 2);
@@ -383,7 +348,7 @@ function updateMarketSnapshot(data) {
             updateCell(`${pToken}_delta`, pair.p_delta ?? 0, 4);
             updateCell(`${pToken}_gamma`, pair.p_gamma ?? 0, 4);
 
-            // Apply shading based on forward (Option B rules)
+            // === Apply shading ===
             const rowElem = document.getElementById(`row_${cToken}`);
             if (rowElem) {
                 applyShadingForRow(rowElem, Number(pair.strike), forward, cToken, pToken);
