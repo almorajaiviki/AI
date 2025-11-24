@@ -159,7 +159,10 @@ function buildMarketLayout(data) {
 
 /* ============================================================
    Build multi-expiry option chain tables
-   - uses data.forwardByExpiry[expiry] for forward
+   - Restored features:
+       ✓ Collapsible expiry sections (default collapsed)
+       ✓ Sorting per-expiry (strike ascending)
+       ✓ Forward header with live updates
    ============================================================ */
 function buildOptionChainTables(data) {
     const optionDiv = document.getElementById("option-chain");
@@ -170,88 +173,102 @@ function buildOptionChainTables(data) {
         return;
     }
 
-    // === Group optionPairs by expiry ===
+    // --- Group by expiry ---
     const groups = {};
     for (const pair of data.optionPairs) {
-        const exp = pair.expiry;
-        if (!groups[exp]) groups[exp] = [];
-        groups[exp].push(pair);
+        if (!groups[pair.expiry]) groups[pair.expiry] = [];
+        groups[pair.expiry].push(pair);
     }
 
-    // === Build each expiry section ===
-    Object.entries(groups).forEach(([exp, group]) => {
+    // --- Sort expiries ASC (RESTORED) ---
+    const sortedExpiries = Object.keys(groups).sort();
+
+    // --- Loop in sorted order ---
+    for (const exp of sortedExpiries) {
+        const group = groups[exp];
+
+        // Sort strikes ASC
+        group.sort((a, b) => a.strike - b.strike);
+
         const wrapper = document.createElement("div");
+        wrapper.style.marginBottom = "12px";
 
-        // Forward for this expiry
-        let forward = null;
-        if (data.forwardByExpiry && data.forwardByExpiry[exp] != null) {
-            forward = Number(data.forwardByExpiry[exp]);
-        }
+        let forward =
+            data.forwardByExpiry && data.forwardByExpiry[exp] != null
+                ? Number(data.forwardByExpiry[exp])
+                : null;
 
-        // --- Expiry Header (modified with span ID for updates) ---
+        // ========= COLLAPSIBLE HEADER — OLD STYLE [+]/[-] =========
+        const collapsed = true; // default collapsed
+        const tableId = `table_${exp.replace(/[^A-Za-z0-9]/g, "_")}`;
+
         wrapper.innerHTML = `
-            <div class="expiry-header">
+            <div class="expiry-header" style="cursor:pointer; user-select:none;">
                 <b>Expiry:</b> ${exp}
-                <b>Forward:</b> <span id="expFwd_${exp}">${forward ?? "-"}</span>
+                <b style="margin-left:10px;">Forward:</b>
+                <span id="expFwd_${exp}">${forward ?? "-"}</span>
+                <span id="toggle_${tableId}" 
+                      style="margin-left:10px; font-weight:bold;">[+]</span>
             </div>
+            <div id="${tableId}" style="display:none;"></div>
         `;
 
-        // --- Option Table ---
-        const tableContainer = document.createElement("div");
+        const tableContainer = wrapper.querySelector(`#${tableId}`);
+
+        // === Build table ===
         let html = `
             <table>
                 <tr>
-                    <th colspan="9" style="text-align:center;">CALLS</th>
-                    <th rowspan="2" style="text-align:center;">Strike<br/>(% of Forward)</th>
-                    <th colspan="9" style="text-align:center;">PUTS</th>
+                    <th colspan="9">CALLS</th>
+                    <th rowspan="2">Strike<br/>(% Fwd)</th>
+                    <th colspan="9">PUTS</th>
                 </tr>
                 <tr>
                     <th>Gamma</th><th>Delta</th><th>OI</th><th>Bid</th><th>BidSprd</th>
-                    <th>NPV</th><th>AskSprd</th><th>Ask</th><th>IV Used</th>
-                    <th>IV Used</th><th>Bid</th><th>BidSprd</th><th>NPV</th>
+                    <th>NPV</th><th>AskSprd</th><th>Ask</th><th>IV</th>
+                    <th>IV</th><th>Bid</th><th>BidSprd</th><th>NPV</th>
                     <th>AskSprd</th><th>Ask</th><th>OI</th><th>Delta</th><th>Gamma</th>
                 </tr>
         `;
 
-        // --- Build all rows ---
         for (const pair of group) {
-            const cToken = pair.c_token;
-            const pToken = pair.p_token;
-
+            const c = pair.c_token;
+            const p = pair.p_token;
             const strikeDisplay = Number(pair.strike).toLocaleString("en-IN");
+
             html += `
-                <tr id="row_${cToken}">
-                    <td id="${cToken}_gamma"></td>
-                    <td id="${cToken}_delta"></td>
-                    <td id="${cToken}_oi"></td>
-                    <td id="${cToken}_bid"></td>
-                    <td id="${cToken}_bidsprd"></td>
-                    <td id="${cToken}_npv"></td>
-                    <td id="${cToken}_asksprd"></td>
-                    <td id="${cToken}_ask"></td>
-                    <td id="${cToken}_ivused"></td>
+                <tr id="row_${c}">
+                    <td id="${c}_gamma"></td>
+                    <td id="${c}_delta"></td>
+                    <td id="${c}_oi"></td>
+                    <td id="${c}_bid"></td>
+                    <td id="${c}_bidsprd"></td>
+                    <td id="${c}_npv"></td>
+                    <td id="${c}_asksprd"></td>
+                    <td id="${c}_ask"></td>
+                    <td id="${c}_ivused"></td>
 
-                    <td id="${cToken}_strike" class="strike">${strikeDisplay}</td>
+                    <td id="${c}_strike" class="strike">${strikeDisplay}</td>
 
-                    <td id="${pToken}_ivused"></td>
-                    <td id="${pToken}_bid"></td>
-                    <td id="${pToken}_bidsprd"></td>
-                    <td id="${pToken}_npv"></td>
-                    <td id="${pToken}_asksprd"></td>
-                    <td id="${pToken}_ask"></td>
-                    <td id="${pToken}_oi"></td>
-                    <td id="${pToken}_delta"></td>
-                    <td id="${pToken}_gamma"></td>
+                    <td id="${p}_ivused"></td>
+                    <td id="${p}_bid"></td>
+                    <td id="${p}_bidsprd"></td>
+                    <td id="${p}_npv"></td>
+                    <td id="${p}_asksprd"></td>
+                    <td id="${p}_ask"></td>
+                    <td id="${p}_oi"></td>
+                    <td id="${p}_delta"></td>
+                    <td id="${p}_gamma"></td>
                 </tr>
             `;
         }
 
         html += "</table>";
+
         tableContainer.innerHTML = html;
-        wrapper.appendChild(tableContainer);
         optionDiv.appendChild(wrapper);
 
-        // --- Apply shading based on forward ---
+        // --- Apply shading ---
         for (const pair of group) {
             const rowElem = document.getElementById(`row_${pair.c_token}`);
             if (rowElem) {
@@ -264,7 +281,17 @@ function buildOptionChainTables(data) {
                 );
             }
         }
-    });
+
+        // ========= RESTORED SMALL TOGGLE LOGIC =========
+        const header = wrapper.querySelector(".expiry-header");
+        const toggle = wrapper.querySelector(`#toggle_${tableId}`);
+
+        header.addEventListener("click", () => {
+            const hidden = tableContainer.style.display === "none";
+            tableContainer.style.display = hidden ? "block" : "none";
+            toggle.textContent = hidden ? "[-]" : "[+]";
+        });
+    }
 }
 
 /* ============================================================
