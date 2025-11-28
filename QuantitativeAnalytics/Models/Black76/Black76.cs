@@ -73,45 +73,57 @@ namespace QuantitativeAnalytics
             int maxIterations = 100,
             double tolerance = 1e-6)
         {
+            // Initial guess must be positive and finite
             double iv = initialGuess;
+            if (!double.IsFinite(iv) || iv <= 0.0)
+                iv = 0.2; // mild default
 
-            for (int i = 0; i < maxIterations; i++)
+            // Local reusable variables
+            for (int iter = 0; iter < maxIterations; iter++)
             {
-                double npv = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv, timeToExpiry);
-                double npvUp = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv + ivBump, timeToExpiry);
-                double npvDown = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv - ivBump, timeToExpiry);
+                // Reject bad IV immediately
+                if (!double.IsFinite(iv) || iv <= 0.0 || iv > 5.0)
+                    return double.NaN;
 
-                double vega = (npvUp - npvDown) / (2 * ivBump);
-                if (Math.Abs(npv - marketPrice) < tolerance)
+                double npv = NPVIV(isCall, forwardPrice, strike, riskFreeRate, iv, timeToExpiry);
+                if (!double.IsFinite(npv))
+                    return double.NaN;
+
+                // Check convergence
+                double diff = npv - marketPrice;
+                if (Math.Abs(diff) < tolerance)
                     return iv;
 
-                iv -= (npv - marketPrice) / vega;
-                if (iv <= 0) iv = ivBump; // Prevent negative volatility
+                // Compute vega via symmetric finite differences
+                double ivUp = iv + ivBump;
+                double ivDown = iv - ivBump;
+
+                if (ivDown <= 0.0) ivDown = ivBump; // prevent invalid negative vol
+
+                double npvUp = NPVIV(isCall, forwardPrice, strike, riskFreeRate, ivUp, timeToExpiry);
+                double npvDown = NPVIV(isCall, forwardPrice, strike, riskFreeRate, ivDown, timeToExpiry);
+
+                if (!double.IsFinite(npvUp) || !double.IsFinite(npvDown))
+                    return double.NaN;
+
+                double vega = (npvUp - npvDown) / (2 * ivBump);
+
+                // Vega must be non-degenerate
+                if (!double.IsFinite(vega) || Math.Abs(vega) < 1e-12)
+                    return double.NaN;
+
+                // Newton update
+                double newIv = iv - diff / vega;
+
+                // Domain + sanity checks
+                if (!double.IsFinite(newIv) || newIv <= 0.0 || newIv > 5.0)
+                    return double.NaN;
+
+                iv = newIv;
             }
 
-            // Fallback to bisection if Newton-Raphson failed to converge or produced invalid result
-            return ComputeIVBisection(isCall, forwardPrice, strike, timeToExpiry, riskFreeRate, marketPrice);
-        }
-
-        /// <summary>
-        /// Robust bisection method for IV calculation when Newton-Raphson fails.
-        /// </summary>
-        private static double ComputeIVBisection(
-            bool isCall,
-            double forwardPrice,
-            double strike,
-            double timeToExpiry,
-            double riskFreeRate,
-            double marketPrice)
-        {
-            double lo = 1e-6, hi = 5.0;
-            for (int iter = 0; iter < 100; ++iter)
-            {
-                double mid = 0.5 * (lo + hi);
-                double p = NPVIV(isCall, forwardPrice, strike, riskFreeRate, mid, timeToExpiry);
-                if (p > marketPrice) hi = mid; else lo = mid;
-            }
-            return 0.5 * (lo + hi);
-        }
+            // If we are here, Newton did not converge
+            return double.NaN;
+}
     }
 }

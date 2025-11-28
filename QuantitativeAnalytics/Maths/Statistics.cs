@@ -2,6 +2,12 @@ namespace QuantitativeAnalytics
 {
     public static class Statistics
     {
+        // Standard normal PDF
+        public static double NormalPdf(double x)
+        {
+            return Math.Exp(-0.5 * x * x) / Math.Sqrt(2.0 * Math.PI);
+        }
+
         /// <summary>
         /// Computes the cumulative distribution function (CDF) of the standard normal distribution.
         /// </summary>

@@ -1,5 +1,6 @@
 // File: QuantitativeAnalytics/Models/Black76/Black76PriceSpaceVolSkew.cs
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace QuantitativeAnalytics
 {
@@ -42,13 +43,15 @@ namespace QuantitativeAnalytics
             double timeToExpiry,
             double OICutoff)
         {
+            Stopwatch swTotal = new Stopwatch();
+            swTotal.Start();
             // Validate inputs
             if (callData == null) throw new ArgumentNullException(nameof(callData));
             if (putData == null) throw new ArgumentNullException(nameof(putData));
             if (forwardPrice <= 0) throw new ArgumentException("forwardPrice must be positive", nameof(forwardPrice));
             if (timeToExpiry <= 0) throw new ArgumentException("timeToExpiry must be positive", nameof(timeToExpiry));
             if (OICutoff < 0) throw new ArgumentException("OICutoff must be non-negative", nameof(OICutoff));
-
+            long initims = swTotal.ElapsedMilliseconds;
             forward = forwardPrice;
             r = riskFreeRate;
             _timeToExpiry = timeToExpiry;
@@ -117,6 +120,8 @@ namespace QuantitativeAnalytics
                                                .ToList();
             if (!strikeList.Any())
                 throw new ArgumentException("No valid candidates after intrinsic bounds filtering.");
+
+            long postfilterms = swTotal.ElapsedMilliseconds;
 
             // 3) Convert candidates to put-price domain for shape checks (but keep original info)
             foreach (var kv in candidatesByStrike)
@@ -224,6 +229,10 @@ namespace QuantitativeAnalytics
             strikes = finalNodes.Select(nod => nod.Strike).ToArray();
             putPrices = finalNodes.Select(nod => nod.PutPrice).ToArray();
             ivNodes = new double[n];
+            long arrayms = swTotal.ElapsedMilliseconds;
+
+            //Stopwatch  sw = new Stopwatch();
+            //sw.Start();
 
             // 7) Precompute IVs at nodes (cache)
             for (int i = 0; i < n; ++i)
@@ -245,6 +254,13 @@ namespace QuantitativeAnalytics
                 if (double.IsNaN(iv) || iv < 0) iv = 0.0;
                 ivNodes[i] = iv;
             }
+
+            //sw.Stop();
+            long totalms = swTotal.ElapsedMilliseconds;
+            swTotal.Stop();
+            //Console.WriteLine($"Node IV cache build time: {sw.ElapsedMilliseconds} ms for {n} nodes.");
+            Console.WriteLine($"Total initialization time breakdown (ms): {initims} init, {postfilterms - initims} filtering, {arrayms - postfilterms} array build, {totalms - arrayms} IV cache build. ");
+            //Console.WriteLine($"Total Black76PriceSpaceVolSkew construction time: {swTotal.ElapsedMilliseconds} ms.");
         }
 
         /// <summary>
@@ -494,6 +510,9 @@ namespace QuantitativeAnalytics
 
             foreach (var p in skewParamsList)
             {
+                Stopwatch swSkew = new Stopwatch();
+                swSkew.Start();
+                // Validate inputs
                 if (p.callData == null) throw new ArgumentException("callData cannot be null");
                 if (p.putData == null) throw new ArgumentException("putData cannot be null");
                 if (p.forwardPrice <= 0) throw new ArgumentException("forwardPrice must be positive");
@@ -507,8 +526,8 @@ namespace QuantitativeAnalytics
                 // Skip expiry if no liquid strikes at all (calls + puts combined < 1)
                 if (callFiltered.Count + putFiltered.Count < 1)
                 {
-                    Console.WriteLine(
-                        $"⚠️ Skipping expiry slice (TTE={p.timeToExpiry:F4}): no liquid strikes (OI cutoff={p.OICutoff}).");
+                    //Console.WriteLine(
+                        //$"⚠️ Skipping expiry slice (TTE={p.timeToExpiry:F4}): no liquid strikes (OI cutoff={p.OICutoff}).");
                     continue;
                 }
                 // Build skew using the filtered lists (skew internally will still perform bounds/convexity cleaning)
@@ -527,10 +546,12 @@ namespace QuantitativeAnalytics
                 catch (Exception ex)
                 {
                     // If skew construction fails for some reason, log and skip this expiry
-                    Console.WriteLine(
-                        $"⚠️ Skipping expiry slice (TTE={p.timeToExpiry:F4}): skew construction failed: {ex.Message}");
+                    //Console.WriteLine(
+                        //$"⚠️ Skipping expiry slice (TTE={p.timeToExpiry:F4}): skew construction failed: {ex.Message}");
                     continue;
                 }
+                swSkew.Stop();
+                Console.WriteLine($"✅ Built skew for TTE={p.timeToExpiry:F4} in {swSkew.ElapsedMilliseconds} ms.");
             }
 
             if (built.Count == 0)
