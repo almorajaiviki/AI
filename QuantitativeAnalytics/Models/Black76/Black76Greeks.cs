@@ -30,9 +30,9 @@ namespace QuantitativeAnalytics
             //Console.WriteLine($"Inside gamma calcs, npvUp: {npvUp}, npvAt: {npvAt}, npvDown: {npvDown}");
 
             double gamma = npvUp - 2*npvAt + npvDown;
-            // Clamp tiny numerical negatives
-            if (gamma < 0 && gamma > -1e-4)
-                gamma = 0.0;
+            // // Clamp tiny numerical negatives
+            // if (gamma < 0 && gamma > -1e-4)
+            //     gamma = 0.0;
 
             return gamma;
         }

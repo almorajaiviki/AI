@@ -235,25 +235,110 @@ namespace QuantitativeAnalytics
             //sw.Start();
 
             // 7) Precompute IVs at nodes (cache)
+            // for (int i = 0; i < n; ++i)
+            // {
+            //     double K = strikes[i];
+            //     double p = putPrices[i];
+            //     double iv;
+            //     try
+            //     {
+            //         // Use Black76.ComputeIV (assumed available). Using isCall=false because we invert put price.
+            //         // NOTE: ComputeIV parameter ordering assumed compatible with your project (we used earlier calls elsewhere)
+            //         iv = Black76.ComputeIV(false, forward, K, _timeToExpiry, r, p, initialGuess: 0.2);
+            //     }
+            //     catch
+            //     {
+            //         // fallback conservative guess
+            //         iv = 0.2;
+            //     }
+            //     if (double.IsNaN(iv) || iv < 0) iv = 0.0;
+            //     ivNodes[i] = iv;
+            // }
+            // ----- Strict node-IV caching -----
+            // Build valid lists and only commit nodes that produce valid IV.
+            var validStrikes = new List<double>();
+            var validPutPrices = new List<double>();
+            var validIvNodes = new List<double>();
+
+            //double discount = Math.Exp(-r * _timeToExpiry);
+
             for (int i = 0; i < n; ++i)
             {
                 double K = strikes[i];
-                double p = putPrices[i];
-                double iv;
-                try
+                double pPut = putPrices[i];   // primary put price
+                double computedIv = double.NaN;
+
+                // --- Step 1: Try put price first ---
+                if (double.IsFinite(pPut) && pPut > 0.0)
                 {
-                    // Use Black76.ComputeIV (assumed available). Using isCall=false because we invert put price.
-                    // NOTE: ComputeIV parameter ordering assumed compatible with your project (we used earlier calls elsewhere)
-                    iv = Black76.ComputeIV(false, forward, K, _timeToExpiry, r, p, initialGuess: 0.2);
+                    try
+                    {
+                        computedIv = Black76.ComputeIV(false, forward, K, _timeToExpiry, r, pPut, initialGuess: 0.2);
+                    }
+                    catch
+                    {
+                        computedIv = double.NaN;
+                    }
                 }
-                catch
+
+                // --- Step 2: Strict fallback: try call candidate at SAME strike ---
+                if ((!double.IsFinite(computedIv) || computedIv <= 0.0))
                 {
-                    // fallback conservative guess
-                    iv = 0.2;
+                    // Only available in the main constructor (pipeline). 
+                    // Convenience ctor has no candidates, so skip this branch automatically.
+                    if (finalNodes != null && finalNodes.Count > i && finalNodes[i].Candidates != null)
+                    {
+                        var callCandidate = finalNodes[i].Candidates
+                            .Where(c => c.IsCall && double.IsFinite(c.Price) && c.Price > 0.0)
+                            .OrderByDescending(c => c.OI)
+                            .FirstOrDefault();
+
+                        if (callCandidate != null)
+                        {
+                            double altPutPrice = callCandidate.Price - discount * (forward - K);
+                            if (double.IsFinite(altPutPrice) && altPutPrice > 0.0)
+                            {
+                                try
+                                {
+                                    double altIv = Black76.ComputeIV(false, forward, K, _timeToExpiry, r, altPutPrice, initialGuess: 0.2);
+                                    if (double.IsFinite(altIv) && altIv > 0.0)
+                                    {
+                                        computedIv = altIv;
+                                        pPut = altPutPrice;
+                                    }
+                                }
+                                catch
+                                {
+                                    // leave computedIv as NaN
+                                }
+                            }
+                        }
+                    }
                 }
-                if (double.IsNaN(iv) || iv < 0) iv = 0.0;
-                ivNodes[i] = iv;
+
+                // --- Step 3: Accept only valid IVs ---
+                if (double.IsFinite(computedIv) && computedIv > 0.0)
+                {
+                    validStrikes.Add(K);
+                    validPutPrices.Add(pPut);
+                    validIvNodes.Add(computedIv);
+                }
+                else
+                {
+                    // Strike skipped: no valid IV from put nor call at same strike.
+                    // Console.WriteLine($"⚠️ Skipping strike {K} — strict IV inversion failed.");
+                }
             }
+
+            // --- Step 4: Ensure enough nodes ---
+            if (validStrikes.Count < 2)
+                throw new InvalidOperationException("Not enough valid strikes remain after strict IV filtering.");
+
+            // --- Step 5: Commit arrays ---
+            strikes    = validStrikes.ToArray();
+            putPrices  = validPutPrices.ToArray();
+            ivNodes    = validIvNodes.ToArray();
+            n          = strikes.Length;
 
             //sw.Stop();
             long totalms = swTotal.ElapsedMilliseconds;
@@ -265,8 +350,8 @@ namespace QuantitativeAnalytics
 
         /// <summary>
         /// Public GetVol: returns implied vol for input log-moneyness (ln(K / forward)).
-        /// Accepts log-moneyness to make forward-percentage bumps symmetric.
-        /// Uses piecewise-linear price interpolation and inverts to implied vol (warm-started from node IVs).
+        /// Strict mode: piecewise-linear price interpolation -> single ComputeIV call (warm-start).
+        /// If inversion fails, return nearest node IV (no bisection, no IV=0 fallback).
         /// </summary>
         public double GetVol(double logMoneyness)
         {
@@ -278,11 +363,11 @@ namespace QuantitativeAnalytics
             }
             catch
             {
-                // if input is invalid (NaN/Inf) guard and return 0
-                return 0.0;
+                // invalid input guard: return nearest ATM node IV (defensive)
+                return ivNodes.Length > 0 ? ivNodes[0] : 0.0;
             }
 
-            if (double.IsNaN(Kq) || Kq <= 0.0) return 0.0;
+            if (!double.IsFinite(Kq) || Kq <= 0.0) return ivNodes.Length > 0 ? ivNodes[0] : 0.0;
 
             // exact node match?
             int idx = Array.BinarySearch(strikes, Kq);
@@ -311,35 +396,38 @@ namespace QuantitativeAnalytics
             // warm start iv by linear interp of node ivs
             double ivGuess = ivNodes[seg] + t * (ivNodes[seg + 1] - ivNodes[seg]);
 
-            double ivq;
+            // Try single ComputeIV call (strict mode: no bisection fallback here)
+            double ivq = double.NaN;
             try
             {
                 ivq = Black76.ComputeIV(false, forward, Kq, _timeToExpiry, r, Pq, initialGuess: ivGuess);
             }
             catch
             {
-                // fallback robust bisection
-                ivq = InvertPutPriceBisection(Pq, forward, Kq, r, _timeToExpiry);
+                ivq = double.NaN;
             }
 
-            if (double.IsNaN(ivq) || ivq < 0) ivq = 0.0;
+            // If ComputeIV failed (non-finite or non-positive), pick nearest node IV
+            if (!double.IsFinite(ivq) || ivq <= 0.0)
+            {
+                // choose whichever node is closer in strike space
+                double distLeft = Math.Abs(Kq - Kleft);
+                double distRight = Math.Abs(Kright - Kq);
+                double nearestIv;
 
-            // cache and return
+                if (distLeft <= distRight)
+                    nearestIv = ivNodes[seg];
+                else
+                    nearestIv = ivNodes[seg + 1];
+
+                // store to cache and return nearest node iv
+                nonNodeIvCache[Kq] = nearestIv;
+                return nearestIv;
+            }
+
+            // Save successful computed IV into cache and return
             nonNodeIvCache[Kq] = ivq;
             return ivq;
-        }
-        // Fallback bisection inversion for put price -> implied vol (very robust)
-        private double InvertPutPriceBisection(double price, double F, double K, double rLocal, double T)
-        {
-            double lo = 1e-6, hi = 5.0;
-            for (int iter = 0; iter < 80; ++iter)
-            {
-                double mid = 0.5 * (lo + hi);
-                // Use Black76.NPVIV signature: (isCall, forwardPrice, strike, riskFreeRate, iv, timeToExpiry)
-                double p = Black76.NPVIV(false, F, K, rLocal, mid, T);
-                if (p > price) hi = mid; else lo = mid;
-            }
-            return 0.5 * (lo + hi);
         }
 
         // ---------- Bumping and param interface ----------
@@ -439,24 +527,73 @@ namespace QuantitativeAnalytics
             n = strikesNodes.Length;
             strikes = (double[])strikesNodes.Clone();
             putPrices = (double[])putPricesNodes.Clone();
-            ivNodes = new double[n];
+            // ivNodes = new double[n];
+
+            // for (int i = 0; i < n; ++i)
+            // {
+            //     double K = strikes[i];
+            //     double p = putPrices[i];
+            //     double iv;
+            //     try
+            //     {
+            //         iv = Black76.ComputeIV(false, forward, K, _timeToExpiry, r, p, initialGuess: 0.2);
+            //     }
+            //     catch
+            //     {
+            //         iv = 0.2;
+            //     }
+            //     if (double.IsNaN(iv) || iv < 0) iv = 0.0;
+            //     ivNodes[i] = iv;
+            // }
+
+            // ----- Strict node-IV caching (Convenience Ctor) -----
+            // Only PUT prices exist here; no candidates/calls to fallback to.
+            var validStrikes = new List<double>();
+            var validPutPrices = new List<double>();
+            var validIvNodes = new List<double>();
 
             for (int i = 0; i < n; ++i)
             {
                 double K = strikes[i];
-                double p = putPrices[i];
-                double iv;
-                try
+                double pPut = putPrices[i];
+                double computedIv = double.NaN;
+
+                // --- Step 1: Try put price only (strict mode) ---
+                if (double.IsFinite(pPut) && pPut > 0.0)
                 {
-                    iv = Black76.ComputeIV(false, forward, K, _timeToExpiry, r, p, initialGuess: 0.2);
+                    try
+                    {
+                        computedIv = Black76.ComputeIV(false, forward, K, _timeToExpiry, r, pPut, initialGuess: 0.2);
+                    }
+                    catch
+                    {
+                        computedIv = double.NaN;
+                    }
                 }
-                catch
+
+                // --- Step 2: Accept only valid IV; no fallback to calls in this constructor ---
+                if (double.IsFinite(computedIv) && computedIv > 0.0)
                 {
-                    iv = 0.2;
+                    validStrikes.Add(K);
+                    validPutPrices.Add(pPut);
+                    validIvNodes.Add(computedIv);
                 }
-                if (double.IsNaN(iv) || iv < 0) iv = 0.0;
-                ivNodes[i] = iv;
+                else
+                {
+                    // skipped
+                    // Console.WriteLine($"⚠️ (DTO/BUMP strict) Skipping strike {K}: IV inversion failed.");
+                }
             }
+
+            // --- Step 3: Ensure enough nodes ---
+            if (validStrikes.Count < 2)
+                throw new InvalidOperationException("Not enough valid strikes remain after strict IV filtering (DTO/Bump constructor).");
+
+            // --- Step 4: Commit arrays ---
+            strikes   = validStrikes.ToArray();
+            putPrices = validPutPrices.ToArray();
+            ivNodes   = validIvNodes.ToArray();
+            n         = strikes.Length;
         }
 
         // ---------- small internal helper types ----------
