@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "Y210+++ixw4=",
+  "dgSpecHash": "vZ4t6NdwSY4=",
   "success": true,
   "projectFilePath": "/Users/almoraboy/Projects/AI/MarketData/MarketData.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "/Users/almoraboy/.nuget/packages/mathnet.numerics/5.0.0/mathnet.numerics.5.0.0.nupkg.sha512"
+  ],
   "logs": []
 }

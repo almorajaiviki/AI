@@ -1,4 +1,3 @@
-// File: QuantitativeAnalytics/Models/Black76/Black76PriceSpaceVolSkew.cs
 using System.Collections.Concurrent;
 using System.Diagnostics;
 

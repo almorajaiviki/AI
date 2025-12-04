@@ -117,6 +117,9 @@ namespace MarketData
                 _futureElements.Add(future.Token, new FutureElement(future, _index, null, _rfr, now, _greeksCalculator));
             }
 
+            // === Build ATM option details for ForwardCurve ===
+            var atmOptions = BuildATMOptionDetails(_optionsByToken, _futureElements, _index.Calendar, now);
+
             // === Build ForwardCurve once ===
             ForwardCurve? forwardCurve = null;
             try
@@ -128,13 +131,23 @@ namespace MarketData
 
                 if (futureDetails.Count > 0)
                 {
-                    forwardCurve = ForwardCurve.BuildFromFutureDetails(
+                    forwardCurve = ForwardCurve.BuildFromFutureOptionsDetails(
                         spot: _index.GetSnapshot().IndexSpot,
                         divYield: _index.GetSnapshot().DivYield,
                         futureDetails: futureDetails,
+                        optionATMDetails: atmOptions,
+                        rfr: _rfr.Value,
                         calendar: _index.Calendar,
                         snapshotTime: _initializationTime,
                         interpolation: InterpolationMethod.Spline);
+
+                    // forwardCurve = ForwardCurve.BuildFromFutureDetails(
+                    //     spot: _index.GetSnapshot().IndexSpot,
+                    //     divYield: _index.GetSnapshot().DivYield,
+                    //     futureDetails: futureDetails,
+                    //     calendar: _index.Calendar,
+                    //     snapshotTime: _initializationTime,
+                    //     interpolation: InterpolationMethod.Spline);
                 }
             }
             catch (Exception ex)
@@ -338,6 +351,106 @@ namespace MarketData
 
             return result;
         }
+        
+        private IEnumerable<(DateTime expiry, double atmCallMid, double atmPutMid, double atmStrike)>
+        BuildATMOptionDetails(
+            Dictionary<uint, Option> optionsByToken,
+            Dictionary<uint, FutureElement> futureElements,
+            CalendarLib.MarketCalendar calendar,
+            DateTime now)
+        {
+            var result = new List<(DateTime, double, double, double)>();
+
+            // --- Step 1: Collect expiries from options ---
+            var expiries = optionsByToken.Values
+                .Select(o => o.Expiry)
+                .Distinct()
+                .OrderBy(e => e)
+                .ToList();
+
+            // --- Step 2: Collect expiry → nearest future expiry mapping ---
+            var futureExpiries = futureElements.Values
+                .Select(f => f.Future.Expiry)
+                .Distinct()
+                .OrderBy(e => e)
+                .ToList();
+
+            // Precompute forward prices from futures (will be used to pick ATM strike)
+            var futureFwdByExpiry = new Dictionary<DateTime, double>();
+            foreach (var fe in futureElements.Values)
+            {
+                var snap = fe.Future.GetSnapshot();
+                //if (snap != null)
+                {
+                    futureFwdByExpiry[fe.Future.Expiry] = snap.Mid;
+                }
+            }
+
+            // --- Step 3: Loop through option expiries ---
+            foreach (var expiry in expiries)
+            {
+                // Find if this expiry is closest to a real future expiry
+                DateTime? nearestFutureExpiry = null;
+                double minDays = double.MaxValue;
+
+                foreach (var fexp in futureExpiries)
+                {
+                    double d = Math.Abs((fexp - expiry).TotalDays);
+                    if (d < minDays)
+                    {
+                        minDays = d;
+                        nearestFutureExpiry = fexp;
+                    }
+                }
+
+                // Decide ATM reference:
+                // Case A: expiry is closest to a real future expiry → use future forward
+                // Case B: expiry is closer to "now" → use spot
+                double referencePrice;
+
+                if (nearestFutureExpiry != null &&
+                    minDays < Math.Abs((expiry - now).TotalDays)) // expiry closer to future than to now
+                {
+                    referencePrice = futureFwdByExpiry[nearestFutureExpiry.Value];
+                }
+                else
+                {
+                    referencePrice = _index.GetSnapshot().IndexSpot;  // use spot for short expiries
+                }
+
+                // --- Step 4: Find ATM strike = nearest strike to reference ---
+                var relevantOptions = optionsByToken.Values
+                    .Where(o => o.Expiry == expiry)
+                    .ToList();
+
+                if (relevantOptions.Count == 0)
+                    continue;
+
+                double atmStrike = relevantOptions
+                    .Select(o => o.Strike)
+                    .OrderBy(k => Math.Abs(k - referencePrice))
+                    .FirstOrDefault();
+
+                // --- Step 5: Get ATM call/put mid prices ---
+                var atmCall = relevantOptions
+                    .Where(o => o.OptionType == OptionType.CE && o.Strike == atmStrike)
+                    .Select(o => o.GetSnapshot().Mid)
+                    .FirstOrDefault();
+
+                var atmPut = relevantOptions
+                    .Where(o => o.OptionType == OptionType.PE && o.Strike == atmStrike)
+                    .Select(o => o.GetSnapshot().Mid)
+                    .FirstOrDefault();
+
+                if (atmCall <= 0 || atmPut < 0)
+                    continue;
+
+                result.Add((expiry, atmCall, atmPut, atmStrike));
+            }
+
+            return result;
+        }
+
         public void HandlePriceUpdate(PriceUpdate update)
         {
             // Validate token exists
@@ -457,6 +570,9 @@ namespace MarketData
                         }
                     });
 
+                    // === Build ATM option details for ForwardCurve ===
+                    var atmOptions = BuildATMOptionDetails(_optionsByToken, _futureElements, _index.Calendar, now);
+
                     // === Build ForwardCurve once ===
                     ForwardCurve? forwardCurve = null;
                     try
@@ -468,13 +584,23 @@ namespace MarketData
 
                         if (futureDetails.Count > 0)
                         {
-                            forwardCurve = ForwardCurve.BuildFromFutureDetails(
+                            forwardCurve = ForwardCurve.BuildFromFutureOptionsDetails(
                                 spot: _index.GetSnapshot().IndexSpot,
                                 divYield: _index.GetSnapshot().DivYield,
                                 futureDetails: futureDetails,
+                                optionATMDetails: atmOptions,
+                                rfr: _rfr.Value,
                                 calendar: _index.Calendar,
                                 snapshotTime: _initializationTime,
                                 interpolation: InterpolationMethod.Spline);
+
+                            // forwardCurve = ForwardCurve.BuildFromFutureDetails(
+                            //     spot: _index.GetSnapshot().IndexSpot,
+                            //     divYield: _index.GetSnapshot().DivYield,
+                            //     futureDetails: futureDetails,
+                            //     calendar: _index.Calendar,
+                            //     snapshotTime: _initializationTime,
+                            //     interpolation: InterpolationMethod.Spline);
                         }
                     }
                     catch (Exception ex)

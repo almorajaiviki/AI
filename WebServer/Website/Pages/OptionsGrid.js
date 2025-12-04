@@ -5,8 +5,8 @@ const API_URL = "http://localhost:50000/api/snapshot";
 const WS_URL  = "ws://localhost:50001";
 
 // === GLOBALS ===
-let optionsMap = new Map();
-let optionsArray = [];
+let optionsMap = new Map();      // tradingSymbol → record
+let optionsArray = [];           // flat list of CE + PE
 let currentSort = { col: null, asc: true };
 
 // === INITIALIZATION ===
@@ -21,6 +21,7 @@ async function onPageLoad() {
     try {
         const res = await fetch(API_URL);
         if (!res.ok) throw new Error("Snapshot fetch failed");
+
         const snapshot = await res.json();
 
         buildGridSkeleton();
@@ -28,13 +29,16 @@ async function onPageLoad() {
         startWebSocket();
 
         container.style.border = "1px solid #ccc";
-    } catch (err) {
+    }
+    catch (err) {
         console.error("[OptionsGrid] Load error:", err);
-        container.innerHTML = `<p style='color:red;'>Failed to load data: ${err.message}</p>`;
+        container.innerHTML = `<p style="color:red;">Failed to load data: ${err.message}</p>`;
     }
 }
 
-// === STYLE INJECTION ===
+/* ---------------------------------------------------------
+    STYLE
+--------------------------------------------------------- */
 function injectTableStyles() {
     const style = document.createElement("style");
     style.innerHTML = `
@@ -56,14 +60,6 @@ function injectTableStyles() {
             text-align: center;
             position: relative;
         }
-        #options-table th .sort-indicator {
-            margin-left: 4px;
-            color: #bbb;
-        }
-        #options-table th.active .sort-indicator {
-            color: #333;
-            font-weight: bold;
-        }
         #options-table tr:hover {
             background-color: #f1f1f1;
         }
@@ -74,11 +70,16 @@ function injectTableStyles() {
         #options-table td:nth-child(3) {
             text-align: center;
         }
+        .sort-indicator {
+            margin-left: 4px;
+        }
     `;
     document.head.appendChild(style);
 }
 
-// === GRID BUILD ===
+/* ---------------------------------------------------------
+    TABLE SKELETON
+--------------------------------------------------------- */
 function buildGridSkeleton() {
     const div = document.getElementById("grid-container");
     div.innerHTML = `
@@ -106,59 +107,81 @@ function buildGridSkeleton() {
     });
 }
 
-// === POPULATE INITIAL SNAPSHOT ===
+/* ---------------------------------------------------------
+    POPULATE INITIAL SNAPSHOT
+    Compatible with new OptionPairDTO
+--------------------------------------------------------- */
 function populateInitial(optionPairs) {
     const tbody = document.getElementById("grid-body");
+    tbody.innerHTML = "";
     optionsArray = [];
     optionsMap.clear();
-    tbody.innerHTML = "";
 
     if (!optionPairs) return;
 
-    for (const pair of optionPairs) {
-        for (const side of ["call", "put"]) {
-            const o = pair[side];
-            const g = pair[`${side}Greeks`];
-            const s = pair[`${side}Spreads`];
-            if (!o || !g) continue;
-
-            const tr = document.createElement("tr");
-            tr.id = o.tradingSymbol;
-            tr.innerHTML = `
-                <td>${o.tradingSymbol}</td>
-                <td>${o.optionType}</td>
-                <td>${o.strike.toLocaleString("en-IN")}</td>
-                <td>${o.bid.toFixed(2)}</td>
-                <td>${s ? s.bidSpread.toFixed(2) : "-"}</td>
-                <td>${g.npv.toFixed(2)}</td>
-                <td>${s ? s.askSpread.toFixed(2) : "-"}</td>
-                <td>${o.ask.toFixed(2)}</td>
-                <td>${(g.iv_Used * 100).toFixed(2)}</td>
-                <td>${o.oi.toLocaleString("en-IN")}</td>
-            `;
-
-            const rec = {
-                symbol: o.tradingSymbol,
-                type: o.optionType,
-                strike: o.strike,
-                bid: o.bid,
-                bidSpread: s ? s.bidSpread : null,
-                npv: g.npv,
-                askSpread: s ? s.askSpread : null,
-                ask: o.ask,
-                iv: g.iv_Used,
-                oi: o.oi,
-                row: tr
-            };
-
-            optionsArray.push(rec);
-            optionsMap.set(o.tradingSymbol, rec);
-            tbody.appendChild(tr);
-        }
+    for (const p of optionPairs) {
+        addOrUpdateRow_fromPair(p, "C");
+        addOrUpdateRow_fromPair(p, "P");
     }
+
+    // Append rows to DOM
+    for (const rec of optionsArray) tbody.appendChild(rec.row);
 }
 
-// === WEBSOCKET UPDATES ===
+/* ---------------------------------------------------------
+    Convert one side of OptionPairDTO into row
+--------------------------------------------------------- */
+function addOrUpdateRow_fromPair(pair, sideLetter) {
+    const isCall = sideLetter === "C";
+    const symbol = `${pair.strike}${isCall ? "CE" : "PE"}`;
+
+    // Extract fields with default fallbacks to avoid undefined errors
+    const bid        = Number(pair[sideLetter + "_bid"]        ?? 0);
+    const ask        = Number(pair[sideLetter + "_ask"]        ?? 0);
+    const oi         = Number(pair[sideLetter + "_oi"]         ?? 0);
+    const iv         = Number(pair[sideLetter + "_iv"]         ?? 0);
+    const npv        = Number(pair[sideLetter + "_npv"]        ?? 0);
+    const bidSpread  = pair[sideLetter + "_bidSpread"];
+    const askSpread  = pair[sideLetter + "_askSpread"];
+
+    const rec = {
+        symbol,
+        type: isCall ? "CE" : "PE",
+        strike: pair.strike,
+        bid,
+        bidSpread: (typeof bidSpread === "number") ? bidSpread : null,
+        npv,
+        askSpread: (typeof askSpread === "number") ? askSpread : null,
+        ask,
+        iv,
+        oi,
+        row: null
+    };
+
+    const tr = document.createElement("tr");
+    tr.id = symbol;
+
+    tr.innerHTML = `
+        <td>${symbol}</td>
+        <td>${rec.type}</td>
+        <td>${rec.strike}</td>
+        <td>${rec.bid.toFixed(2)}</td>
+        <td>${rec.bidSpread !== null ? rec.bidSpread.toFixed(2) : "-"}</td>
+        <td>${rec.npv.toFixed(2)}</td>
+        <td>${rec.askSpread !== null ? rec.askSpread.toFixed(2) : "-"}</td>
+        <td>${rec.ask.toFixed(2)}</td>
+        <td>${(rec.iv * 100).toFixed(2)}</td>
+        <td>${rec.oi.toLocaleString("en-IN")}</td>
+    `;
+
+    rec.row = tr;
+    optionsArray.push(rec);
+    optionsMap.set(symbol, rec);
+}
+
+/* ---------------------------------------------------------
+    WEBSOCKET
+--------------------------------------------------------- */
 function startWebSocket() {
     const socket = new WebSocket(WS_URL);
     socket.onopen = () => console.log("[OptionsGrid] WebSocket connected.");
@@ -169,82 +192,72 @@ function startWebSocket() {
         const json = JSON.parse(event.data);
         if (!json || !json.optionPairs) return;
 
-        for (const pair of json.optionPairs) {
-            for (const side of ["call", "put"]) {
-                const o = pair[side];
-                const g = pair[`${side}Greeks`];
-                const s = pair[`${side}Spreads`];
-                if (!o || !g) continue;
-
-                const rec = optionsMap.get(o.tradingSymbol);
-                if (rec) {
-                    rec.bid = o.bid;
-                    rec.ask = o.ask;
-                    rec.npv = g.npv;
-                    rec.bidSpread = s ? s.bidSpread : null;
-                    rec.askSpread = s ? s.askSpread : null;
-                    rec.iv = g.iv_Used;
-                    rec.oi = o.oi;
-
-                    const cells = rec.row.children;
-                    cells[3].textContent = o.bid.toFixed(2);
-                    cells[4].textContent = s ? s.bidSpread.toFixed(2) : "-";
-                    cells[5].textContent = g.npv.toFixed(2);
-                    cells[6].textContent = s ? s.askSpread.toFixed(2) : "-";
-                    cells[7].textContent = o.ask.toFixed(2);
-                    cells[8].textContent = (g.iv_Used * 100).toFixed(2);
-                    cells[9].textContent = o.oi.toLocaleString("en-IN");
-                }
-            }
+        for (const p of json.optionPairs) {
+            applyUpdate(p, "C");
+            applyUpdate(p, "P");
         }
 
         if (currentSort.col) sortBy(currentSort.col, null, false);
     };
 }
 
-// === SORTING ===
+function applyUpdate(pair, sideLetter) {
+    const isCall = sideLetter === "C";
+    const symbol = `${pair.strike}${isCall ? "CE" : "PE"}`;
+
+    const rec = optionsMap.get(symbol);
+    if (!rec) return;
+
+    // Update data fields
+    rec.bid = pair[sideLetter + "_bid"];
+    rec.ask = pair[sideLetter + "_ask"];
+    rec.npv = pair[sideLetter + "_npv"];
+    rec.bidSpread = pair[sideLetter + "_bidSpread"];
+    rec.askSpread = pair[sideLetter + "_askSpread"];
+    rec.iv = pair[sideLetter + "_iv"];
+    rec.oi = pair[sideLetter + "_oi"];
+
+    // Update DOM cells
+    const c = rec.row.children;
+    c[3].textContent = rec.bid.toFixed(2);
+    c[4].textContent = rec.bidSpread?.toFixed(2) ?? "-";
+    c[5].textContent = rec.npv.toFixed(2);
+    c[6].textContent = rec.askSpread?.toFixed(2) ?? "-";
+    c[7].textContent = rec.ask.toFixed(2);
+    c[8].textContent = (rec.iv * 100).toFixed(2);
+    c[9].textContent = rec.oi.toLocaleString("en-IN");
+}
+
+/* ---------------------------------------------------------
+    SORTING
+--------------------------------------------------------- */
 function sortBy(col, headerElem = null, toggle = true) {
     if (toggle) {
         if (currentSort.col === col) currentSort.asc = !currentSort.asc;
         else currentSort = { col, asc: true };
     }
 
-    // Reset header indicators
+    // Reset header UI
     document.querySelectorAll("#header-row th").forEach(th => th.classList.remove("active"));
     document.querySelectorAll("#header-row .sort-indicator").forEach(span => span.textContent = "⇅");
 
-    // Highlight active header
     if (headerElem) {
         headerElem.classList.add("active");
-        const indicator = headerElem.querySelector(".sort-indicator");
-        indicator.textContent = currentSort.asc ? "▲" : "▼";
-    } else if (currentSort.col) {
-        const activeTh = document.querySelector(`#header-row th[data-col='${currentSort.col}']`);
-        if (activeTh) {
-            activeTh.classList.add("active");
-            const indicator = activeTh.querySelector(".sort-indicator");
-            indicator.textContent = currentSort.asc ? "▲" : "▼";
-        }
+        headerElem.querySelector(".sort-indicator").textContent =
+            currentSort.asc ? "▲" : "▼";
     }
 
-    const key = col;
     const dir = currentSort.asc ? 1 : -1;
 
     optionsArray.sort((a, b) => {
-        const va = a[key], vb = b[key];
+        const va = a[col], vb = b[col];
 
-        if (["symbol", "type"].includes(key)) {
-            return va.localeCompare(vb, "en", { sensitivity: "base" }) * dir;
-        }
+        if (["symbol", "type"].includes(col))
+            return va.localeCompare(vb) * dir;
 
-        const na = parseFloat(va);
-        const nb = parseFloat(vb);
-        if (isNaN(na) && isNaN(nb)) return 0;
-        if (isNaN(na)) return 1;
-        if (isNaN(nb)) return -1;
-        return (na - nb) * dir;
+        return (va - vb) * dir;
     });
 
     const tbody = document.getElementById("grid-body");
-    for (const rec of optionsArray) tbody.appendChild(rec.row);
+    for (const r of optionsArray) tbody.appendChild(r.row);
 }

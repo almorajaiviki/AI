@@ -61,7 +61,7 @@ namespace MarketData
         /// Build ForwardCurve from raw (timeYears, futurePrice) pairs.
         /// Throws ArgumentException if no valid futures are present (policy 2 -> C).
         /// </summary>
-        public static ForwardCurve BuildFromFutures(
+        internal static ForwardCurve BuildFromFutures(
             double spot,
             double divYield,
             IEnumerable<(double timeYears, double futurePrice)> futures,
@@ -111,6 +111,96 @@ namespace MarketData
             }
 
             return BuildFromFutures(spot, divYield, list, interpolation);
+        }
+
+        public static ForwardCurve BuildFromFutureOptionsDetails(
+            double spot,
+            double divYield,
+            IEnumerable<FutureDetailDTO> futureDetails,
+            IEnumerable<(DateTime expiry, double atmCallMid, double atmPutMid, double atmStrike)> optionATMDetails,
+            double rfr,
+            MarketCalendar calendar,
+            DateTime snapshotTime,
+            InterpolationMethod interpolation = InterpolationMethod.Spline)
+        {
+            if (futureDetails == null)
+                throw new ArgumentNullException(nameof(futureDetails));
+
+            if (optionATMDetails == null)
+                throw new ArgumentNullException(nameof(optionATMDetails));
+
+            if (calendar == null)
+                throw new ArgumentNullException(nameof(calendar));
+
+            const double MinPositiveTime = 1e-12;
+
+            // === Step 1: Build list "pts" exactly like BuildFromFutureDetails ===
+            var pts = futureDetails
+                //.Where(fd => fd.FutureSnapshot.Expiry != null)
+                .Select(fd =>
+                {
+                    var expiry = fd.FutureSnapshot.Expiry;
+                    double t = calendar.GetYearFraction(snapshotTime, expiry);
+                    return (timeYears: t, futurePrice: fd.FutureSnapshot.Mid);
+                })
+                .Where(p => p.futurePrice > 0 && p.timeYears > MinPositiveTime)
+                .ToList();
+
+            // collect existing future expiries to avoid duplicate knots
+            var futureExpirySet = new HashSet<DateTime>(
+                futureDetails
+                    //.Where(fd => fd.FutureSnapshot.Expiry != null)
+                    .Select(fd => fd.FutureSnapshot.Expiry));
+
+            // === Step 2: Add synthetic ATM forward knots (new part) ===
+            foreach (var (expiry, atmCallMid, atmPutMid, atmStrike) in optionATMDetails)
+            {
+                if (expiry == default)
+                    continue;
+
+                // Skip expiries where we already have a real future
+                if (futureExpirySet.Contains(expiry))
+                    continue;
+
+                double t = calendar.GetYearFraction(snapshotTime, expiry);
+                if (t <= MinPositiveTime)
+                    continue;
+
+                if (atmCallMid <= 0 || atmPutMid < 0 || atmStrike <= 0)
+                    continue;
+
+                // Black–76 put–call parity:
+                //
+                //      C - P = DF * (F - K)
+                //      DF = exp(-r * t)
+                //
+                // =>   F = K + (C - P) * exp(r * t)
+                //
+                double DF_inverse = Math.Exp(rfr * t);    // exp(+r t)
+                double syntheticForwardPrice = atmStrike + (atmCallMid - atmPutMid) * DF_inverse;
+
+                if (syntheticForwardPrice > 0)
+                {
+                    pts.Add((t, syntheticForwardPrice));
+                }
+            }
+
+            // === Step 3: Must have at least one forward point (real or synthetic)
+            if (pts.Count == 0)
+                throw new ArgumentException("No valid forward points (real or synthetic) were supplied.");
+
+            // === Step 4: Sort knots by time ===
+            pts.Sort((a, b) => a.timeYears.CompareTo(b.timeYears));
+
+            // === Step 5: Convert to knot arrays ===
+            var times = pts.Select(p => p.timeYears).ToArray();
+
+            var rates = pts
+                .Select(p => ComputeImpliedRate(spot, p.futurePrice, p.timeYears, divYield))
+                .ToArray();
+
+            // === Step 6: Build the curve using the existing constructor ===
+            return new ForwardCurve(spot, divYield, times, rates, interpolation);
         }
 
         /// <summary>

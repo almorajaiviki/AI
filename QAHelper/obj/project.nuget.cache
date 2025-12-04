@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "qpGUt7Bxh6Y=",
+  "dgSpecHash": "wF3H3hZdcb8=",
   "success": true,
   "projectFilePath": "/Users/almoraboy/Projects/AI/QAHelper/QAHelper.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "/Users/almoraboy/.nuget/packages/mathnet.numerics/5.0.0/mathnet.numerics.5.0.0.nupkg.sha512"
+  ],
   "logs": []
 }
