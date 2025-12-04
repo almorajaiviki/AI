@@ -1,4 +1,4 @@
-// =====================================================================
+/* // =====================================================================
 // SVI (Stochastic Volatility Inspired) Fitter – Jim Gatheral JWV version
 // Drop-in replacement for your quadratic total-variance fit
 // =====================================================================
@@ -113,4 +113,4 @@ namespace QuantitativeAnalytics
             return (a, b, ρ, m, σ);
         }
     }
-}
+} */

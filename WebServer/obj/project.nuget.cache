@@ -1,10 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "AGvk6V6b6Og=",
+  "dgSpecHash": "7O0agvD5jbA=",
   "success": true,
   "projectFilePath": "/Users/almoraboy/Projects/AI/WebServer/WebServer.csproj",
-  "expectedPackageFiles": [
-    "/Users/almoraboy/.nuget/packages/mathnet.numerics/5.0.0/mathnet.numerics.5.0.0.nupkg.sha512"
-  ],
+  "expectedPackageFiles": [],
   "logs": []
 }
