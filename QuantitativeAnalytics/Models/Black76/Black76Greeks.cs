@@ -89,6 +89,42 @@ namespace QuantitativeAnalytics
 
             return (npvUp - npvDown) / 2.0;
         }
+    
+        // inside your Black76Greeks / Black76GreeksCalculator class
+        internal static double Vanna(
+            ProductType productType,
+            bool isCall,
+            double Spot,
+            double forwardPrice,            
+            double strike,
+            double riskFreeRate,
+            double dividendYield,
+            double timeToExpiry,
+            IParametricModelSurface volSurface,
+            double forwardFracBump = 0.001, // 0.1%
+            double volBump = 0.01            // 1 vol point = 0.01
+        )
+        {
+            // forward up/down (fractional)
+            double fUp  = forwardPrice * (1.0 + forwardFracBump);
+            double fDown= forwardPrice * (1.0 - forwardFracBump);
+
+            // vol-surface bumped up/down (parallel)
+            var volUpSurface   = volSurface.Bump(volBump);
+            var volDownSurface = volSurface.Bump(-volBump);
+
+            // 4 evaluations (NPV signature follows your other methods)
+            double npvPP = NPV(productType, isCall, Spot, fUp, strike, riskFreeRate, dividendYield, timeToExpiry, volUpSurface);
+            double npvPM = NPV(productType, isCall, Spot, fUp, strike, riskFreeRate, dividendYield, timeToExpiry, volDownSurface);
+            double npvMP = NPV(productType, isCall, Spot, fDown, strike, riskFreeRate, dividendYield, timeToExpiry, volUpSurface);
+            double npvMM = NPV(productType, isCall, Spot, fDown, strike, riskFreeRate, dividendYield, timeToExpiry, volDownSurface);
+
+            // dollar vanna consistent with your other dollar-greeks
+            double vannaDollar = (npvPP - npvPM - npvMP + npvMM) / 4.0;
+
+            return vannaDollar;
+        }
+    
     }
 
     /// <summary>
