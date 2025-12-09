@@ -119,12 +119,10 @@ function buildMarketLayout(data) {
     marketDiv.innerHTML = `
         <table>
             <tr>
-                <th>Index Spot</th><th>Implied Future</th>
-                <th>RFR</th><th>DivYield</th><th>Last Update</th>
+                <th>Index Spot</th><th>RFR</th><th>DivYield</th><th>Last Update</th>
             </tr>
             <tr>
                 <td id="IndexSpot"></td>
-                <td id="ImpFut"></td>
                 <td id="RFR"></td>
                 <td id="DivYield"></td>
                 <td id="LastUpdate"></td>
@@ -135,7 +133,14 @@ function buildMarketLayout(data) {
     // Futures area
     const futuresDiv = document.getElementById("futures");
     if (data.futures?.length > 0) {
+
+        // ✅ NEW: Sort futures by expiry ASC
+        data.futures.sort((a, b) =>
+            new Date(a.futureSnapshot.expiry) - new Date(b.futureSnapshot.expiry)
+        );
+
         let html = "<table><tr><th>Symbol</th><th>Bid</th><th>NPV</th><th>Ask</th><th>OI</th></tr>";
+
         for (const f of data.futures) {
             const snap = f.futureSnapshot;
             html += `
@@ -147,6 +152,7 @@ function buildMarketLayout(data) {
                     <td id="f_${snap.token}_OI"></td>
                 </tr>`;
         }
+
         html += "</table>";
         futuresDiv.innerHTML = html;
     } else {
@@ -206,7 +212,9 @@ function buildOptionChainTables(data) {
             <div class="expiry-header" style="cursor:pointer; user-select:none;">
                 <b>Expiry:</b> ${exp}
                 <b style="margin-left:10px;">Forward:</b>
-                <span id="expFwd_${exp}">${forward ?? "-"}</span>
+                <span id="expFwd_${exp}">
+                    ${forward != null ? Number(forward).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+                </span>
                 <span id="toggle_${tableId}" 
                       style="margin-left:10px; font-weight:bold;">[+]</span>
             </div>
@@ -303,9 +311,6 @@ function updateMarketSnapshot(data) {
     // === Market info ===
     updateCell("IndexSpot", data.spot, 2, "", true);
 
-    const ImpFutElem = document.getElementById("ImpFut");
-    if (ImpFutElem) ImpFutElem.textContent = "-";
-
     updateCell("RFR", (data.riskFreeRate ?? 0) * 100, 2, "%");
     updateCell("DivYield", (data.divYield ?? 0) * 100, 2, "%");
     updateCell("LastUpdate", new Date(data.snapTime).toLocaleString("en-GB", {
@@ -338,8 +343,8 @@ function updateMarketSnapshot(data) {
             if (data.forwardByExpiry && data.forwardByExpiry[pair.expiry] != null) {
                 const fwdHeader = document.getElementById(`expFwd_${pair.expiry}`);
                 if (fwdHeader) {
-                    fwdHeader.textContent =
-                        Number(data.forwardByExpiry[pair.expiry]).toFixed(2);
+                    fwdHeader.textContent = Number(data.forwardByExpiry[pair.expiry])
+                        .toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
             }
 

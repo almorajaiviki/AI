@@ -31,7 +31,7 @@ namespace Server
             double q = 0.0137;
             Console.WriteLine($"Received q: {q:P2}");
 
-            double OICutoff = 1000000;
+            double OICutoff = 300000;
 
             bool bUseMktFuture = true;
 

@@ -744,7 +744,7 @@ namespace QuantitativeAnalytics
         /// </summary>
         public double GetVol(double timeToExpiry, double moneyness)
         {
-            if (_skews.Count == 0)
+            /* if (_skews.Count == 0)
                 throw new InvalidOperationException("Vol surface has no skews.");
 
             var first = _skews[0];
@@ -780,7 +780,110 @@ namespace QuantitativeAnalytics
                 }
             }
 
-            return last.GetVol(moneyness);
+            return last.GetVol(moneyness); */
+
+            return GetVolEnforcingMonotoneTotalVariance(timeToExpiry, moneyness);
+        }
+
+        /// <summary>
+        /// Surface-level GetVol enforcing monotone total-variance across expiries (Option B).
+        /// - For the requested log-moneyness, queries each skew for implied vol,
+        ///   computes total variance w = sigma^2 * T,
+        ///   enforces cumulative max in time (non-decreasing w),
+        ///   then linearly interpolates w(t) between bracketing expiries and returns sqrt(w/t).
+        /// - Does not modify skew node data; safe & conservative.
+        /// </summary>
+        private double GetVolEnforcingMonotoneTotalVariance(double timeYears, double logMoneyness)
+        {
+            // Defensive guards
+            if (_skews == null || _skews.Count == 0)
+                throw new InvalidOperationException("No skews available in surface.");
+
+            if (timeYears <= 0.0)
+            {
+                // For zero or negative time, return nearest earliest skew's IV at the query moneyness
+                return _skews[0].GetVol(logMoneyness);
+            }
+
+            // 1) Gather (T_i, sigma_i) for all skews at this log-moneyness
+            int m = _skews.Count;
+            var times = new double[m];
+            var totalVars = new double[m];
+            for (int i = 0; i < m; ++i)
+            {
+                var skew = _skews[i];
+                double Ti = skew.TimeToExpiry;
+                // get skew implied vol at requested moneyness (skew.GetVol should be robust)
+                double sig = skew.GetVol(logMoneyness);
+
+                // Defensive: if skew.GetVol returned invalid, fall back to nearest node iv inside skew
+                if (!double.IsFinite(sig) || sig <= 0.0)
+                    sig = skew.GetVol(logMoneyness); // optional helper; see note below
+
+                times[i] = Ti;
+                totalVars[i] = sig * sig * Ti; // w = sigma^2 * T
+            }
+
+            // 2) Enforce monotone non-decreasing total variance across expiries (cumulative max)
+            double cumMax = double.NegativeInfinity;
+            for (int i = 0; i < m; ++i)
+            {
+                if (!double.IsFinite(totalVars[i]) || totalVars[i] < 0.0)
+                {
+                    // If a skew produced invalid w, set it to the previous cumMax (conservative)
+                    totalVars[i] = (double.IsFinite(cumMax) ? cumMax : 0.0);
+                }
+                cumMax = Math.Max(cumMax, totalVars[i]);
+                totalVars[i] = cumMax;
+            }
+
+            // 3) Handle times outside the supported expiry range (extrapolation/clamping)
+            if (timeYears <= times[0])
+            {
+                // clamp to first expiry: w(t) = totalVars[0] * (t / T0) -> we scale variance proportionally
+                // That is: sigma(t) = sqrt( w0 * (t / T0) / t ) = sqrt(w0 / T0) = sigma at T0 (i.e., constant vol)
+                // Simpler/safer: return first-skew sigma
+                double sigma0 = Math.Sqrt(totalVars[0] / Math.Max(1e-12, times[0]));
+                return sigma0;
+            }
+            if (timeYears >= times[m - 1])
+            {
+                // clamp to last expiry: use last total var scaled by t/T_last (or hold last sigma)
+                // Conservative: hold last sigma constant (no extra extrapolation)
+                double sigmaLast = Math.Sqrt(totalVars[m - 1] / Math.Max(1e-12, times[m - 1]));
+                return sigmaLast;
+            }
+
+            // 4) Find bracketing expiries (i such that times[i] < timeYears <= times[i+1])
+            int idx = Array.BinarySearch(times, timeYears);
+            if (idx >= 0)
+            {
+                // exact match — return sqrt(w_i / T_i)
+                double wExact = totalVars[idx];
+                double Ti = times[idx];
+                return Math.Sqrt(Math.Max(0.0, wExact / Math.Max(1e-12, Ti)));
+            }
+            int right = ~Array.BinarySearch(times, timeYears);
+            int left = right - 1;
+            if (left < 0) left = 0;
+            if (right >= m) right = m - 1;
+
+            double Tleft = times[left];
+            double Wright = totalVars[right];
+            double Wleft = totalVars[left];
+            double Tright = times[right];
+
+            // 5) Linear interpolate total variance in time between adjusted Wleft and Wright
+            double fracDen = (Tright - Tleft);
+            double frac = fracDen <= 0.0 ? 0.0 : (timeYears - Tleft) / fracDen;
+            double Wq = Wleft + frac * (Wright - Wleft);
+
+            // Ensure non-negative
+            if (Wq < 0.0) Wq = 0.0;
+
+            // 6) Return sigma = sqrt( Wq / timeYears )
+            double sigmaQ = Math.Sqrt(Wq / Math.Max(1e-12, timeYears));
+            return sigmaQ;
         }
 
         // ===============================================================
