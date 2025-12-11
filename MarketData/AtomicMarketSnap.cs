@@ -116,6 +116,8 @@ namespace MarketData
         //public ImmutableDictionary<double, OptionPair> OptionChainElements => _optionChainElements;
         public ImmutableDictionary<uint, FutureDetailDTO> FuturesByToken => _futuresByToken;
 
+        public MarketCalendar Calendar => _calendar;
+
         public bool TryGetOptionPair(DateTime expiry, double strike, out OptionPair pair)
         {
             pair = default;
@@ -239,7 +241,7 @@ namespace MarketData
                 foreach (var kvp in _optionChainsByExpiry)
                 {
                     var expiry = kvp.Key;
-                    double tte = _calendar.GetYearFraction(_initializationTime, expiry);
+                    double tte = Calendar.GetYearFraction(_initializationTime, expiry);
                     double fwd = _forwardCurve.GetForwardPrice(tte);
                     expiryForwardMap[expiry] = fwd;
                 }
