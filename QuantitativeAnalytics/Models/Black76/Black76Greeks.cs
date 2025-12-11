@@ -2,31 +2,31 @@ namespace QuantitativeAnalytics
 {
     internal static class Black76Greeks
     {
-        internal static double NPV(ProductType productType, bool isCall, double Spot, double forwardPrice, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface)
+        internal static double NPV(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface, double FeeAmount = 0)
         {
-            return Black76.NPV(productType, isCall, Spot, forwardPrice, strike, timeToExpiry, riskFreeRate, dividendYield, volSurface);
+            return Black76.NPV(productType, isCall, forwardPrice, strike, timeToExpiry, riskFreeRate, volSurface, FeeAmount);
         }
 
-        internal static double Delta(ProductType productType, bool isCall, double Spot, double forwardPrice, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.001)
+        internal static double Delta(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.001)
         {
             double bumpedForward = forwardPrice * (1 + bumpSize);
-            double npvUp = NPV(productType, isCall, Spot, bumpedForward, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
+            double npvUp = NPV(productType, isCall, bumpedForward, strike, riskFreeRate, timeToExpiry, volSurface);
 
             double bumpedDownForward = forwardPrice * (1 - bumpSize);
-            double npvDown = NPV(productType, isCall, Spot, bumpedDownForward, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
+            double npvDown = NPV(productType, isCall, bumpedDownForward, strike, riskFreeRate, timeToExpiry, volSurface);
 
             return (npvUp - npvDown) / 2.0;
         }
 
-        internal static double Gamma(ProductType productType, bool isCall, double Spot, double forwardPrice, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.001)
+        internal static double Gamma(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.001)
         {
             double bumpedForward = forwardPrice * (1 + bumpSize);
-            double npvUp = NPV(productType, isCall, Spot, bumpedForward, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
+            double npvUp = NPV(productType, isCall, bumpedForward, strike, riskFreeRate, timeToExpiry, volSurface);
 
-            double npvAt = NPV(productType, isCall, Spot, forwardPrice, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
+            double npvAt = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volSurface);
 
             double bumpedDownForward = forwardPrice * (1 - bumpSize);
-            double npvDown = NPV(productType, isCall, Spot, bumpedDownForward, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
+            double npvDown = NPV(productType, isCall, bumpedDownForward, strike, riskFreeRate, timeToExpiry, volSurface);
             //Console.WriteLine($"Inside gamma calcs, npvUp: {npvUp}, npvAt: {npvAt}, npvDown: {npvDown}");
 
             double gamma = npvUp - 2*npvAt + npvDown;
@@ -37,7 +37,7 @@ namespace QuantitativeAnalytics
             return gamma;
         }
 
-        internal static IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double Spot, double forwardPrice, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface volSurface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
+        internal static IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface volSurface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
         {
             if (productType != ProductType.Option)
                 yield break; // Vega not defined for futures
@@ -61,8 +61,8 @@ namespace QuantitativeAnalytics
                 var bumpedUpSurface = volSurface.Bump(singleBump);
                 var bumpedDownSurface = volSurface.Bump(singleBump.Select(b => (b.parameterName, -b.bumpAmount)));
 
-                double npvUp = NPV(productType, isCall, Spot, forwardPrice, strike, riskFreeRate, dividendYield, timeToExpiry, bumpedUpSurface);
-                double npvDown = NPV(productType, isCall, Spot, forwardPrice, strike, riskFreeRate, dividendYield, timeToExpiry, bumpedDownSurface);
+                double npvUp = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, bumpedUpSurface);
+                double npvDown = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, bumpedDownSurface);
 
                 double vega = (npvUp - npvDown) / 2.0;
                 double m = forwardPrice / strike;
@@ -71,21 +71,21 @@ namespace QuantitativeAnalytics
             }
         }
 
-        internal static double Theta(ProductType productType, bool isCall, double Spot, double forwardPrice, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface)
+        internal static double Theta(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface)
         {
-            double npvAt = NPV(productType, isCall, Spot, forwardPrice, strike, riskFreeRate, dividendYield, timeToExpiry, volSurface);
+            double npvAt = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volSurface);
             double bumpedTimeToExpiry = Math.Max(0, timeToExpiry - (1.0 / 365.0));
-            double npvBumped = NPV(productType, isCall, Spot, forwardPrice, strike, riskFreeRate, dividendYield, bumpedTimeToExpiry, volSurface);
+            double npvBumped = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, bumpedTimeToExpiry, volSurface);
             return (npvBumped - npvAt);
         }
 
-        internal static double Rho(ProductType productType, bool isCall, double Spot, double forwardPrice, double strike, double riskFreeRate, double dividendYield, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.0001)
+        internal static double Rho(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface, double bumpSize = 0.0001)
         {
             double bumpedUpRate = riskFreeRate + bumpSize;
-            double npvUp = NPV(productType, isCall, Spot, forwardPrice, strike, bumpedUpRate, dividendYield, timeToExpiry, volSurface);
+            double npvUp = NPV(productType, isCall, forwardPrice, strike, bumpedUpRate, timeToExpiry, volSurface);
 
             double bumpedDownRate = riskFreeRate - bumpSize;
-            double npvDown = NPV(productType, isCall, Spot, forwardPrice, strike, bumpedDownRate, dividendYield, timeToExpiry, volSurface);
+            double npvDown = NPV(productType, isCall, forwardPrice, strike, bumpedDownRate, timeToExpiry, volSurface);
 
             return (npvUp - npvDown) / 2.0;
         }
@@ -93,12 +93,10 @@ namespace QuantitativeAnalytics
         // inside your Black76Greeks / Black76GreeksCalculator class
         internal static double Vanna(
             ProductType productType,
-            bool isCall,
-            double Spot,
+            bool isCall,         
             double forwardPrice,            
             double strike,
             double riskFreeRate,
-            double dividendYield,
             double timeToExpiry,
             IParametricModelSurface volSurface,
             double forwardFracBump = 0.001, // 0.1%
@@ -114,10 +112,10 @@ namespace QuantitativeAnalytics
             var volDownSurface = volSurface.Bump(-volBump);
 
             // 4 evaluations (NPV signature follows your other methods)
-            double npvPP = NPV(productType, isCall, Spot, fUp, strike, riskFreeRate, dividendYield, timeToExpiry, volUpSurface);
-            double npvPM = NPV(productType, isCall, Spot, fUp, strike, riskFreeRate, dividendYield, timeToExpiry, volDownSurface);
-            double npvMP = NPV(productType, isCall, Spot, fDown, strike, riskFreeRate, dividendYield, timeToExpiry, volUpSurface);
-            double npvMM = NPV(productType, isCall, Spot, fDown, strike, riskFreeRate, dividendYield, timeToExpiry, volDownSurface);
+            double npvPP = NPV(productType, isCall, fUp, strike, riskFreeRate, timeToExpiry, volUpSurface);
+            double npvPM = NPV(productType, isCall, fUp, strike, riskFreeRate, timeToExpiry, volDownSurface);
+            double npvMP = NPV(productType, isCall, fDown, strike, riskFreeRate, timeToExpiry, volUpSurface);
+            double npvMM = NPV(productType, isCall, fDown, strike, riskFreeRate, timeToExpiry, volDownSurface);
 
             // dollar vanna consistent with your other dollar-greeks
             double vannaDollar = (npvPP - npvPM - npvMP + npvMM) / 4.0;
@@ -125,6 +123,34 @@ namespace QuantitativeAnalytics
             return vannaDollar;
         }
     
+        internal static double Volga(
+            ProductType productType,
+            bool isCall,            
+            double forwardPrice,            
+            double strike,
+            double riskFreeRate,            
+            double timeToExpiry,
+            IParametricModelSurface volSurface,
+            double volBump = 0.01   // 1 vol point = 0.01
+        )
+        {
+            // Build bumped surfaces
+            var volUp   = volSurface.Bump(+volBump);
+            var volDown = volSurface.Bump(-volBump);
+
+            // Price with up/down/base vols
+            double npvUp   = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volUp);
+
+            double npvDown = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volDown);
+
+            double npvBase = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volSurface);
+
+            // Dollar-Volga (NPV curvature for ±1 vol point bump)
+            double volgaDollar = npvUp - 2.0 * npvBase + npvDown;
+
+            return volgaDollar;
+        }
+
     }
 
     /// <summary>
@@ -135,23 +161,23 @@ namespace QuantitativeAnalytics
         public static Black76GreeksCalculator Instance { get; } = new Black76GreeksCalculator();
         private Black76GreeksCalculator() { }
 
-        public double NPV(ProductType productType, bool isCall, double Spot, double forward, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
-            => Black76Greeks.NPV(productType, isCall, Spot, forward, strike, rate, dividendYield, tte, surface);
+        public double NPV(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
+            => Black76Greeks.NPV(productType, isCall, forward, strike, rate, tte, surface);
 
-        public double Delta(ProductType productType, bool isCall, double Spot, double forward, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
-            => Black76Greeks.Delta(productType, isCall, Spot, forward, strike, rate, dividendYield, tte, surface);
+        public double Delta(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
+            => Black76Greeks.Delta(productType, isCall, forward, strike, rate, tte, surface);
 
-        public double Gamma(ProductType productType, bool isCall, double Spot, double forward, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
-            => Black76Greeks.Gamma(productType, isCall, Spot, forward, strike, rate, dividendYield, tte, surface);
+        public double Gamma(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
+            => Black76Greeks.Gamma(productType, isCall, forward, strike, rate, tte, surface);
 
-        public IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double Spot, double forward, double strike, double rate, double dividendYield, double tte, IParametricModelSurface surface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
-            => Black76Greeks.VegaByParam(productType, isCall, Spot, forward, strike, rate, dividendYield, tte, surface, bumps);
+        public IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface surface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
+            => Black76Greeks.VegaByParam(productType, isCall, forward, strike, rate, tte, surface, bumps);
 
-        public double Theta(ProductType productType, bool isCall, double Spot, double forward, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
-            => Black76Greeks.Theta(productType, isCall, Spot, forward, strike, rate, dividendYield, tte, surface);
+        public double Theta(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
+            => Black76Greeks.Theta(productType, isCall, forward, strike, rate, tte, surface);
 
-        public double Rho(ProductType productType, bool isCall, double Spot, double forward, double strike, double rate, double dividendYield, double tte, IParametricModelSurface? surface)
-            => Black76Greeks.Rho(productType, isCall, Spot, forward, strike, rate, dividendYield, tte, surface);
+        public double Rho(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
+            => Black76Greeks.Rho(productType, isCall, forward, strike, rate, tte, surface);
     }
 }
 

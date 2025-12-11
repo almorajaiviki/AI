@@ -15,9 +15,7 @@ namespace MarketData
 
         public FutureGreeks(
             FutureSnapshot futureSnapshot,
-            double spot,
             double riskFreeRate,
-            double dividendYield,
             double timeToExpiry,
             IParametricModelSurface volSurface,
             IGreeksCalculator greeksCalculator)
@@ -30,29 +28,29 @@ namespace MarketData
             var productType = ProductType.Future;
 
             NPV = greeksCalculator.NPV(
-                productType, isCall, spot, futureSnapshot.Mid, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, futureSnapshot.Mid, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Delta = greeksCalculator.Delta(
-                productType, isCall, spot, futureSnapshot.Mid, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, futureSnapshot.Mid, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Gamma = greeksCalculator.Gamma(
-                productType, isCall, spot, futureSnapshot.Mid, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, futureSnapshot.Mid, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Vega = greeksCalculator.VegaByParam(
-                productType, isCall, spot, futureSnapshot.Mid, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface)
+                productType, isCall, futureSnapshot.Mid, strike,
+                riskFreeRate, timeToExpiry, volSurface)
                 .ToImmutableArray();
 
             Rho = greeksCalculator.Rho(
-                productType, isCall, spot, futureSnapshot.Mid, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, futureSnapshot.Mid, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Theta = greeksCalculator.Theta(
-                productType, isCall, spot, futureSnapshot.Mid, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, futureSnapshot.Mid, strike,
+                riskFreeRate, timeToExpiry, volSurface);
         }
     }
 

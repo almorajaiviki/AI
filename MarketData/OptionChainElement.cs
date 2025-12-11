@@ -54,8 +54,8 @@ namespace MarketData
             double forwardPrice = forwardCurve.GetForwardPrice(timeToExpiry);
 
             // Greeks
-            _callGreeks = new OptionGreeks(callOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
-            _putGreeks = new OptionGreeks(putOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+            _callGreeks = new OptionGreeks(callOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+            _putGreeks = new OptionGreeks(putOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
 
             // Spreads
             _callSpreads = new OptionSpreads(callOption.GetSnapshot(), _callGreeks);
@@ -75,8 +75,8 @@ namespace MarketData
                 double forwardPrice = forwardCurve.GetForwardPrice(timeToExpiry);
 
                 // Update Greeks
-                _callGreeks = new OptionGreeks(_callOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
-                _putGreeks = new OptionGreeks(_putOption.GetSnapshot(), indexSnapshot.IndexSpot, forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+                _callGreeks = new OptionGreeks(_callOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+                _putGreeks = new OptionGreeks(_putOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
 
                 // Update Spreads
                 _callSpreads = new OptionSpreads(_callOption.GetSnapshot(), _callGreeks);

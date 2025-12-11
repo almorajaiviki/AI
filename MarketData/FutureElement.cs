@@ -32,9 +32,7 @@ namespace MarketData
 
             _futureGreeks = new FutureGreeks(
                 futureSnapshot,
-                indexSnapshot.IndexSpot, // spot
                 rfr.Value,               // riskFreeRate
-                indexSnapshot.DivYield,  // dividendYield
                 timeToExpiry,
                 volSurface,
                 greeksCalculator);
@@ -58,9 +56,7 @@ namespace MarketData
 
                 _futureGreeks = new FutureGreeks(
                     futureSnapshot,
-                    indexSnapshot.IndexSpot, // spot
                     rfr.Value,               // riskFreeRate
-                    indexSnapshot.DivYield,  // dividendYield
                     timeToExpiry,
                     volSurface,
                     greeksCalculator);

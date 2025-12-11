@@ -6,6 +6,7 @@ namespace QuantitativeAnalytics
     public enum ProductType
     {
         Option,
-        Future
+        Future,
+        Fee
     }
 }

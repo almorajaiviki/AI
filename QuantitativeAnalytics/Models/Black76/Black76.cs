@@ -26,16 +26,22 @@ namespace QuantitativeAnalytics
         internal static double NPV(
             ProductType productType,
             bool isCall,
-            double spot,
             double forwardPrice,
             double strike,
             double timeToExpiry,
-            double riskFreeRate,
-            double dividendYield,
-            IParametricModelSurface? volSurface = null)
+            double riskFreeRate,            
+            IParametricModelSurface? volSurface = null,
+            double FeeAmount = 0.0)
         {
             switch (productType)
             {
+                case ProductType.Fee:
+                    // Fees are typically fixed amounts and do not require Black-76 pricing.
+                    if  (timeToExpiry < 0.0)
+                        return 0.0;
+                    double discountFactor = Math.Exp(-riskFreeRate * timeToExpiry);
+                    return discountFactor * FeeAmount;
+
                 case ProductType.Future:
                     // Futures fair value = Spot * exp[(r - q) * T]
                     return forwardPrice;

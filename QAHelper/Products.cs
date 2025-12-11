@@ -84,11 +84,9 @@ namespace QAHelper
                         return  _greeksCalculator.NPV(
                             productType: QuantitativeAnalytics.ProductType.Option,
                             isCall: isCall,
-                            spot: ams.IndexSpot,
                             forward: forward,                            
                             strike: strike,
                             rate: rfr,
-                            dividendYield: div,
                             tte: tte,
                             surface: volSurface
                         );

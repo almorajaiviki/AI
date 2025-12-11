@@ -17,7 +17,6 @@ namespace MarketData
 
         public OptionGreeks(
             OptionSnapshot optionSnapshot,
-            double spot,
             double impliedFuture,
             double riskFreeRate,
             double timeToExpiry,
@@ -30,7 +29,6 @@ namespace MarketData
             double strike = optionSnapshot.Strike;
             // compute log-moneyness (ln(K/F)) to match DTO/storage convention
             double logMoneyness = Math.Log(strike / impliedFuture);
-            double dividendYield = 0.0; // Hardcoded for now
             var productType = ProductType.Option;
 
             // ask the surface using log-moneyness
@@ -38,29 +36,29 @@ namespace MarketData
 
             //for options, the decision to use benchmark future or spot is made in MarketData class
             NPV = greeksCalculator.NPV(
-                productType, isCall, spot, impliedFuture, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, impliedFuture, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Delta = greeksCalculator.Delta(
-                productType, isCall, spot, impliedFuture, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, impliedFuture, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Gamma = greeksCalculator.Gamma(
-                productType, isCall, spot, impliedFuture, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, impliedFuture, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Vega = greeksCalculator.VegaByParam(
-                productType, isCall, spot, impliedFuture, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface)
+                productType, isCall, impliedFuture, strike,
+                riskFreeRate, timeToExpiry, volSurface)
                 .ToImmutableArray();
 
             Rho = greeksCalculator.Rho(
-                productType, isCall, spot, impliedFuture, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, impliedFuture, strike,
+                riskFreeRate, timeToExpiry, volSurface);
 
             Theta = greeksCalculator.Theta(
-                productType, isCall, spot, impliedFuture, strike,
-                riskFreeRate, dividendYield, timeToExpiry, volSurface);
+                productType, isCall, impliedFuture, strike,
+                riskFreeRate, timeToExpiry, volSurface);
         }
     }
 
