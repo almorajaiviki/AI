@@ -665,7 +665,7 @@ namespace MarketData
                     try
                     {
                         ProcessPendingUpdates();
-                        await Task.Delay(500, _token);
+                        await Task.Delay(1000, _token);
                     }
                     catch (TaskCanceledException)
                     {
