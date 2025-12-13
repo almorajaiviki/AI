@@ -9,8 +9,8 @@ namespace RiskGen
         // Common properties for all tradable products
         // --------------------------------------------------
         public string TradingSymbol { get; }
-        public string Exchange { get; }
-        public uint Token { get; }
+        //public string Exchange { get; }
+        //public uint Token { get; }
         public int LotSize { get; }
 
         // --------------------------------------------------
@@ -29,9 +29,7 @@ namespace RiskGen
         // Constructor
         // --------------------------------------------------
         internal Instrument(
-            string tradingSymbol,
-            string exchange,
-            uint token,
+            string tradingSymbol,            
             int lotSize,
             ProductType productType,            
             double? strike = null,
@@ -39,9 +37,9 @@ namespace RiskGen
             DateTime? expiry = null)
         {
             TradingSymbol = tradingSymbol ?? throw new ArgumentNullException(nameof(tradingSymbol));
-            Exchange = exchange ?? throw new ArgumentNullException(nameof(exchange));
+            //Exchange = exchange ?? throw new ArgumentNullException(nameof(exchange));
 
-            Token = token;
+            //Token = token;
             LotSize = lotSize;
 
             ProductType = productType;            

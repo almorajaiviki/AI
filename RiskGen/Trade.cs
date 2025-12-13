@@ -122,5 +122,9 @@ namespace RiskGen
         double Rho        
     );
 
+    public sealed record TradeNPV(
+        double NPV        
+    );
+
 
 }

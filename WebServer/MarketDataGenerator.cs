@@ -57,7 +57,8 @@ namespace Server
                     optionQuotes.FirstOrDefault(oq => oq.Token == nfo.Token.ToString())?.LastTradedPrice ?? 0d, // FIXED
                     optionQuotes.FirstOrDefault(oq => oq.Token == nfo.Token.ToString())?.BidPrice ?? 0d,         // FIXED
                     optionQuotes.FirstOrDefault(oq => oq.Token == nfo.Token.ToString())?.AskPrice ?? 0d,         // FIXED
-                    optionOI.TryGetValue(nfo.Token, out var oi) ? oi : 0d
+                    optionOI.TryGetValue(nfo.Token, out var oi) ? oi : 0d,
+                    nfo.LotSize
                 )
             ).ToList();
 
@@ -71,7 +72,8 @@ namespace Server
                     futureQuotes.FirstOrDefault(oq => oq.Token == nfo.Token.ToString())?.LastTradedPrice ?? 0d, // FIXED
                     futureQuotes.FirstOrDefault(oq => oq.Token == nfo.Token.ToString())?.BidPrice ?? 0d,         // FIXED
                     futureQuotes.FirstOrDefault(oq => oq.Token == nfo.Token.ToString())?.AskPrice ?? 0d,         // FIXED
-                    futuresOI.TryGetValue(nfo.Token, out var oi) ? oi : 0d
+                    futuresOI.TryGetValue(nfo.Token, out var oi) ? oi : 0d,
+                    nfo.LotSize
                 )
             ).ToList();
 

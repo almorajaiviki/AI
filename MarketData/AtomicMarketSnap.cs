@@ -118,6 +118,10 @@ namespace MarketData
 
         public MarketCalendar Calendar => _calendar;
 
+        public ImmutableDictionary<string, OptionSnapshot> OptionsByTradingSymbol => _optionsByTradingSymbol;
+
+        public ImmutableDictionary<string, FutureDetailDTO> FuturesByTradingSymbol => _futuresByTradingSymbol;
+
         public bool TryGetOptionPair(DateTime expiry, double strike, out OptionPair pair)
         {
             pair = default;
@@ -328,7 +332,7 @@ namespace MarketData
                         ltp: pair.C_ltp,
                         bid: pair.C_bid,
                         ask: pair.C_ask,
-                        oi: pair.C_oi
+                        oi: pair.C_oi, 1
                         );
 
                     double tte = _calendar.GetYearFraction(_initializationTime, pair.expiry);
@@ -344,7 +348,7 @@ namespace MarketData
                         ltp: pair.P_ltp,
                         bid: pair.P_bid,
                         ask: pair.P_ask,
-                        oi: pair.P_oi);
+                        oi: pair.P_oi, 1);
                     var putGreeks = new OptionGreeks(putSnap, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator);
 
                     optionSnapshots.Add(callSnap);
@@ -361,7 +365,7 @@ namespace MarketData
                 foreach (var f in dto.Futures)
                 {
                     var snap = f.FutureSnapshot;
-                    var fut = new Future(snap.TradingSymbol, snap.Token, snap.Expiry, dto.SnapTime, new RFR(dto.RiskFreeRate), snap.LTP, snap.Bid, snap.Ask, snap.OI);
+                    var fut = new Future(snap.TradingSymbol, snap.Token, snap.Expiry, dto.SnapTime, new RFR(dto.RiskFreeRate), snap.LTP, snap.Bid, snap.Ask, snap.OI, 1);
                     var index = new Index(dto.Index, 0, dto.Spot, _calendar, new RFR(dto.RiskFreeRate), dto.DivYield, dto.Expiry, dto.SnapTime);
                     var futElem = new FutureElement(fut, index, _volSurface, new RFR(dto.RiskFreeRate), dto.SnapTime, _greeksCalculator);
                     futureElements.Add(futElem);
