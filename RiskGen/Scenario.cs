@@ -89,4 +89,15 @@ namespace RiskGen
             );
         }
     }
+
+    public sealed record OptionExpiryStrikesDto(
+        DateTime Expiry,
+        IReadOnlyList<double> Strikes
+    );
+
+    public sealed record ScenarioSnapshotDto(
+        IReadOnlyList<OptionExpiryStrikesDto> Options,
+        IReadOnlyList<DateTime> Futures,
+        IReadOnlyList<string> Scenarios
+    );
 }

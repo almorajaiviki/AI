@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using RiskGen;
 
 namespace Server
 {
@@ -84,28 +85,106 @@ namespace Server
                     msg = Encoding.UTF8.GetBytes(json);
                 }
                 else
-                {
-                    string filename = Path.GetFileName(rawUrl);
-                    filename = string.IsNullOrEmpty(filename) ? "HomePage.html" : filename;
-
-                    string path = Path.Combine(_baseFolder, filename);
-                    if (!File.Exists(path))
-                    {
-                        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                        msg = Encoding.UTF8.GetBytes("404 - Page not found.");
-                    }
-                    else
+                { 
+                    if (rawUrl.StartsWith("/api/scenario/snapshot", StringComparison.OrdinalIgnoreCase))
                     {
                         context.Response.StatusCode = (int)HttpStatusCode.OK;
-                        contentType = filename switch
-                        {
-                            string f when f.EndsWith(".js") => "text/javascript",
-                            string f when f.EndsWith(".css") => "text/css",
-                            string f when f.EndsWith(".html") => "text/html",
-                            _ => "application/octet-stream"
-                        };
+                        contentType = "application/json";
 
-                        msg = await File.ReadAllBytesAsync(path);
+                        var snap = _marketData.AtomicSnapshot;
+
+                        ScenarioSnapshotDto dto;
+
+                        if (snap == null)
+                        {
+                            dto = new ScenarioSnapshotDto(
+                                Options: Array.Empty<OptionExpiryStrikesDto>(),
+                                Futures: Array.Empty<DateTime>(),
+                                Scenarios: Array.Empty<string>()
+                            );
+                        }
+                        else
+                        {
+                            // -------------------------------
+                            // Options: expiry → strikes
+                            // -------------------------------
+                            var optionGroups = snap
+                                .OptionsByTradingSymbol
+                                .Values
+                                .GroupBy(o => o.Expiry)
+                                .Select(g => new OptionExpiryStrikesDto(
+                                    Expiry: g.Key,
+                                    Strikes: g
+                                        .Select(o => o.Strike)
+                                        .Distinct()
+                                        .OrderBy(s => s)
+                                        .ToList()
+                                ))
+                                .OrderBy(o => o.Expiry)
+                                .ToList();
+
+                            // -------------------------------
+                            // Futures: expiries only
+                            // -------------------------------
+                            var futures = snap
+                                .FuturesByTradingSymbol
+                                .Values
+                                .Select(f => f.FutureSnapshot.Expiry)
+                                .Distinct()
+                                .OrderBy(e => e)
+                                .ToList();
+
+                            // -------------------------------
+                            // Scenario names
+                            // -------------------------------
+                            var scenarioNames = ScenarioOrchestrator.Instance
+                                .GetAllScenarios()
+                                .Keys
+                                .OrderBy(n => n)
+                                .ToList();
+
+                            dto = new ScenarioSnapshotDto(
+                                Options: optionGroups,
+                                Futures: futures,
+                                Scenarios: scenarioNames
+                            );
+                        }
+
+                        string json = System.Text.Json.JsonSerializer.Serialize(
+                            dto,
+                            new System.Text.Json.JsonSerializerOptions
+                            {
+                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
+                                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                            });
+
+                        msg = Encoding.UTF8.GetBytes(json);
+                    }                
+                    else
+                    {
+                        string filename = Path.GetFileName(rawUrl);
+                        filename = string.IsNullOrEmpty(filename) ? "HomePage.html" : filename;
+
+                        string path = Path.Combine(_baseFolder, filename);
+                        if (!File.Exists(path))
+                        {
+                            context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                            msg = Encoding.UTF8.GetBytes("404 - Page not found.");
+                        }
+                        else
+                        {
+                            context.Response.StatusCode = (int)HttpStatusCode.OK;
+                            contentType = filename switch
+                            {
+                                string f when f.EndsWith(".js") => "text/javascript",
+                                string f when f.EndsWith(".css") => "text/css",
+                                string f when f.EndsWith(".html") => "text/html",
+                                _ => "application/octet-stream"
+                            };
+
+                            msg = await File.ReadAllBytesAsync(path);
+                        }
                     }
                 }
 

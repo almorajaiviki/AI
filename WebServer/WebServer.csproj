@@ -37,6 +37,7 @@
     <ProjectReference Include="../MarketData/MarketData.csproj" />
     <ProjectReference Include="../MarketHelperDict/MarketHelperDict.csproj" />
     <ProjectReference Include="../QuantitativeAnalytics/QuantitativeAnalytics.csproj" />
+    <ProjectReference Include="../RiskGen/RiskGen.csproj" />
   </ItemGroup>
 
 </Project>

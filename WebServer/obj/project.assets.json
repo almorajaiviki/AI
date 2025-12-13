@@ -73,6 +73,21 @@
           "bin/placeholder/QuantitativeAnalytics.dll": {}
         }
       },
+      "RiskGen/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "InstrumentStatic": "1.0.0",
+          "MarketData": "1.0.0",
+          "QuantitativeAnalytics": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/RiskGen.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/RiskGen.dll": {}
+        }
+      },
       "Zerodha/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
@@ -119,6 +134,11 @@
       "path": "../QuantitativeAnalytics/QuantitativeAnalytics.csproj",
       "msbuildProject": "../QuantitativeAnalytics/QuantitativeAnalytics.csproj"
     },
+    "RiskGen/1.0.0": {
+      "type": "project",
+      "path": "../RiskGen/RiskGen.csproj",
+      "msbuildProject": "../RiskGen/RiskGen.csproj"
+    },
     "Zerodha/1.0.0": {
       "type": "project",
       "path": "../Brokers/Zerodha/Zerodha.csproj",
@@ -131,6 +151,7 @@
       "MarketData >= 1.0.0",
       "MarketHelperDict >= 1.0.0",
       "QuantitativeAnalytics >= 1.0.0",
+      "RiskGen >= 1.0.0",
       "Zerodha >= 1.0.0"
     ]
   },
@@ -173,6 +194,9 @@
             },
             "/Users/almoraboy/Projects/AI/QuantitativeAnalytics/QuantitativeAnalytics.csproj": {
               "projectPath": "/Users/almoraboy/Projects/AI/QuantitativeAnalytics/QuantitativeAnalytics.csproj"
+            },
+            "/Users/almoraboy/Projects/AI/RiskGen/RiskGen.csproj": {
+              "projectPath": "/Users/almoraboy/Projects/AI/RiskGen/RiskGen.csproj"
             }
           }
         }
