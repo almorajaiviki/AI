@@ -1,0 +1,279 @@
+window.addEventListener("load", onPageLoad);
+
+async function onPageLoad() {
+    injectStyles();
+
+    try {
+        const resp = await fetch("/api/scenario/snapshot");
+        const data = await resp.json();
+
+        console.log("Scenario snapshot:", data);
+        renderScenarioGenerator(data);
+    } catch (err) {
+        console.error("Failed to load scenario snapshot", err);
+    }
+}
+
+/* =========================================================
+   Styling (JS-driven, like your other pages)
+   ========================================================= */
+function injectStyles() {
+    const style = document.createElement("style");
+    style.innerHTML = `
+        body {
+            font-family: Arial, sans-serif;
+            margin: 12px;
+        }
+
+        h1, h2 {
+            margin: 8px 0;
+        }
+
+        .scenario-name {
+            margin-bottom: 12px;
+        }
+
+        .expiry-header {
+            cursor: pointer;
+            background: #eee;
+            padding: 6px;
+            margin-top: 10px;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+
+        .expiry-body {
+            display: none;
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 6px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 4px 6px;
+            text-align: center;
+        }
+
+        input[type="number"] {
+            width: 60px;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/* =========================================================
+   UI Rendering
+   ========================================================= */
+function renderScenarioGenerator(data) {
+    const app = document.getElementById("app");
+    app.innerHTML = "";
+
+    // Title
+    const title = document.createElement("h1");
+    title.innerText = "Scenario Generator";
+    app.appendChild(title);
+
+    // -------------------------------
+    // Scenario name
+    // -------------------------------
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "scenario-name";
+
+    const nameLabel = document.createElement("label");
+    nameLabel.innerText = "Scenario Name: ";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.id = "scenarioName";
+
+    nameDiv.appendChild(nameLabel);
+    nameDiv.appendChild(nameInput);
+    app.appendChild(nameDiv);
+
+    // -------------------------------
+    // Futures
+    // -------------------------------
+    if (data.futures && data.futures.length > 0) {
+        const futHeader = document.createElement("h2");
+        futHeader.innerText = "Futures";
+        app.appendChild(futHeader);
+
+        const table = document.createElement("table");
+        const hdr = document.createElement("tr");
+        hdr.innerHTML = "<th>Expiry</th><th>Lots</th>";
+        table.appendChild(hdr);
+
+        data.futures.forEach(expiry => {
+            const tr = document.createElement("tr");
+
+            const tdExp = document.createElement("td");
+            tdExp.innerText = formatDate(expiry);
+
+            const tdLots = document.createElement("td");
+            const input = document.createElement("input");
+            input.type = "number";
+            input.className = "future-lots";
+            input.dataset.expiry = expiry;
+            tdLots.appendChild(input);
+
+            tr.appendChild(tdExp);
+            tr.appendChild(tdLots);
+            table.appendChild(tr);
+        });
+
+        app.appendChild(table);
+
+        // -------------------------------
+        // Create Scenario button
+        // -------------------------------
+        const btn = document.createElement("button");
+        btn.innerText = "Create Scenario";
+        btn.onclick = collectAndLogScenario;
+        btn.style.marginTop = "15px";
+
+        app.appendChild(btn);
+    }
+
+    // -------------------------------
+    // Options by expiry
+    // -------------------------------
+    if (data.options && data.options.length > 0) {
+        const optHeader = document.createElement("h2");
+        optHeader.innerText = "Options";
+        app.appendChild(optHeader);
+
+        data.options.forEach(group => {
+            const header = document.createElement("div");
+            header.className = "expiry-header";
+            header.innerText = formatDate(group.expiry);
+
+            const body = document.createElement("div");
+            body.className = "expiry-body";
+
+            header.onclick = () => {
+                body.style.display =
+                    body.style.display === "none" ? "block" : "none";
+            };
+
+            const table = document.createElement("table");
+            const hdr = document.createElement("tr");
+            hdr.innerHTML = "<th>Call Lots</th><th>Strike</th><th>Put Lots</th>";
+            table.appendChild(hdr);
+
+            group.strikes.forEach(strike => {
+                const tr = document.createElement("tr");
+
+                const tdCall = document.createElement("td");
+                const callInput = document.createElement("input");
+                callInput.type = "number";
+                callInput.className = "option-lots";
+                callInput.dataset.expiry = group.expiry;
+                callInput.dataset.strike = strike;
+                callInput.dataset.side = "CE";
+                tdCall.appendChild(callInput);
+
+                const tdStrike = document.createElement("td");
+                tdStrike.innerText = strike;
+
+                const tdPut = document.createElement("td");
+                const putInput = document.createElement("input");
+                putInput.type = "number";
+                putInput.className = "option-lots";
+                putInput.dataset.expiry = group.expiry;
+                putInput.dataset.strike = strike;
+                putInput.dataset.side = "PE";
+                tdPut.appendChild(putInput);
+
+                tr.appendChild(tdCall);
+                tr.appendChild(tdStrike);
+                tr.appendChild(tdPut);
+
+                table.appendChild(tr);
+            });
+
+            body.appendChild(table);
+            app.appendChild(header);
+            app.appendChild(body);
+        });
+    }
+}
+
+function collectAndLogScenario() {
+    const scenarioName = document.getElementById("scenarioName").value.trim();
+
+    if (!scenarioName) {
+        alert("Scenario name is required");
+        return;
+    }
+
+    // -------------------------------
+    // Collect options
+    // -------------------------------
+    const optionMap = new Map(); 
+    // key = expiry|strike → { expiry, strike, callLots, putLots }
+
+    document.querySelectorAll(".option-lots").forEach(input => {
+        const expiry = input.dataset.expiry;
+        const strike = Number(input.dataset.strike);
+        const side = input.dataset.side;
+        const lots = parseInt(input.value || "0", 10);
+
+        if (lots === 0) return;
+
+        const key = `${expiry}|${strike}`;
+        if (!optionMap.has(key)) {
+            optionMap.set(key, {
+                expiry: expiry,
+                strike: strike,
+                callLots: 0,
+                putLots: 0
+            });
+        }
+
+        const obj = optionMap.get(key);
+        if (side === "CE") obj.callLots = lots;
+        if (side === "PE") obj.putLots = lots;
+    });
+
+    const options = Array.from(optionMap.values());
+
+    // -------------------------------
+    // Collect futures
+    // -------------------------------
+    const futures = [];
+
+    document.querySelectorAll(".future-lots").forEach(input => {
+        const lots = parseInt(input.value || "0", 10);
+        if (lots === 0) return;
+
+        futures.push({
+            expiry: input.dataset.expiry,
+            lots: lots
+        });
+    });
+
+    if (options.length === 0 && futures.length === 0) {
+        alert("No instruments selected");
+        return;
+    }
+
+    const payload = {
+        scenarioName: scenarioName,
+        options: options,
+        futures: futures
+    };
+
+    console.log("Scenario payload:", payload);
+}
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString();
+}
