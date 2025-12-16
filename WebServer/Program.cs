@@ -23,7 +23,7 @@ namespace Server
             );
         }
 
-        private static (double rfr, double q, double OICutoff, bool bUseMktFuture, CancellationTokenSource cts, LocalWebServer? webServer, WebSocketServer.WebsocketServer? webSocketServer) InitializeApplication()
+        private static (double rfr, double q, double OICutoff, bool bUseMktFuture, CancellationTokenSource cts, LocalWebServer? webServer, WebsocketServer? webSocketServer) InitializeApplication()
         {
             double rfr = 0.054251;
             Console.WriteLine($"Received rfr: {rfr}");
@@ -46,7 +46,7 @@ namespace Server
 
             IBrokerWebSocketService<ZerodhaSubscriptionDepthAck>? brokerWebSocketService = null;
             LocalWebServer? webServer = null;
-            WebSocketServer.WebsocketServer? webSocketServer = null;
+            WebsocketServer? webSocketServer = null;
 
             return (rfr, q, OICutoff, bUseMktFuture, cts, webServer, webSocketServer);
         }
@@ -272,7 +272,7 @@ namespace Server
         IBrokerAuthService<ZerodhaAuthRequest, ZerodhaAuthResponse> authService,
         IBrokerWebSocketService<ZerodhaSubscriptionDepthAck>? brokerWebSocketService,
         LocalWebServer? webServer,
-        WebSocketServer.WebsocketServer? webSocketServer,
+        WebsocketServer? webSocketServer,
         HttpClient httpClient,
         MarketData.MarketData? marketData = null)
         {
@@ -463,7 +463,7 @@ namespace Server
 
         private static void SubscribeMarketDataToWebSocket(
             MarketData.MarketData marketData,
-            WebSocketServer.WebsocketServer webSocketServer)
+            WebsocketServer webSocketServer)
         {
             marketData.OnMarketDataUpdated += snap =>
             {
@@ -471,7 +471,7 @@ namespace Server
                 {
                     try
                     {
-                        webSocketServer.EnqueueBroadcast<AtomicMarketSnapDTO>(snap);
+                        webSocketServer.EnqueueBroadcast(snap);
                     }
                     catch (Exception ex)
                     {

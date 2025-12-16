@@ -151,6 +151,24 @@ function renderScenarioGenerator(data) {
     app.appendChild(nameDiv);
 
     // -------------------------------
+    // Existing Scenarios
+    // -------------------------------
+    if (data.scenarios && data.scenarios.length > 0) {
+        const h = document.createElement("h2");
+        h.innerText = "Scenarios";
+        app.appendChild(h);
+
+        const ul = document.createElement("ul");
+        data.scenarios.forEach(name => {
+            const li = document.createElement("li");
+            li.innerText = name;
+            ul.appendChild(li);
+        });
+
+        app.appendChild(ul);
+    }
+
+    // -------------------------------
     // Futures (horizontal boxed layout)
     // -------------------------------
     if (data.futures && data.futures.length > 0) {
@@ -190,13 +208,13 @@ function renderScenarioGenerator(data) {
         btn.style.marginTop = "15px";
 
         app.appendChild(btn);
+
+        
     }
 
+    
 
 
-    // -------------------------------
-    // Options by expiry
-    // -------------------------------
     if (data.options && data.options.length > 0) {
         const optHeader = document.createElement("h2");
         optHeader.innerText = "Options";
@@ -344,7 +362,29 @@ function collectAndLogScenario() {
         futures: futures
     };
 
-    console.log("Scenario payload:", payload);
+    (async () => {
+        try {
+            const resp = await fetch("/api/scenario/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!resp.ok) {
+                throw new Error("Scenario creation failed");
+            }
+
+            const data = await resp.json();
+            console.log("Updated scenario snapshot:", data);
+
+            renderScenarioGenerator(data);
+        } catch (err) {
+            console.error("Failed to create scenario", err);
+            alert("Failed to create scenario. See console for details.");
+        }
+    })();
 }
 
 /* =========================================================
