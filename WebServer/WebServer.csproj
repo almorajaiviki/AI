@@ -29,10 +29,6 @@
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </Content>
 </ItemGroup>
-<ItemGroup>
-  <Content Remove="Website/Pages/ScenarioGenerator.html" />
-  <Content Remove="Website/Pages/ScenarioGenerator.js" />
-</ItemGroup>
 
 
   <ItemGroup>

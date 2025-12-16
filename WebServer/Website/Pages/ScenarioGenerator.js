@@ -43,7 +43,6 @@ function injectStyles() {
         }
 
         .expiry-body {
-            display: none;
             margin-bottom: 10px;
         }
 
@@ -61,6 +60,63 @@ function injectStyles() {
         input[type="number"] {
             width: 60px;
         }
+
+        .futures-container {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .future-box {
+            border: 2px solid #444;
+            padding: 8px 10px;
+            min-width: 160px;
+            text-align: center;
+        }
+
+        .future-expiry {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .options-container {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        .expiry-column {
+            border: 2px solid #aaa;
+            padding: 6px;
+            min-width: 220px;
+        }
+
+        .expiry-column.collapsed .expiry-body {
+            display: none;
+        }
+
+        .expiry-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            background: #eee;
+            padding: 4px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        .expiry-toggle {
+            font-size: 12px;
+            border: 1px solid #666;
+            padding: 0 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+
     `;
     document.head.appendChild(style);
 }
@@ -95,37 +151,35 @@ function renderScenarioGenerator(data) {
     app.appendChild(nameDiv);
 
     // -------------------------------
-    // Futures
+    // Futures (horizontal boxed layout)
     // -------------------------------
     if (data.futures && data.futures.length > 0) {
         const futHeader = document.createElement("h2");
         futHeader.innerText = "Futures";
         app.appendChild(futHeader);
 
-        const table = document.createElement("table");
-        const hdr = document.createElement("tr");
-        hdr.innerHTML = "<th>Expiry</th><th>Lots</th>";
-        table.appendChild(hdr);
+        const container = document.createElement("div");
+        container.className = "futures-container";
 
         data.futures.forEach(expiry => {
-            const tr = document.createElement("tr");
+            const box = document.createElement("div");
+            box.className = "future-box";
 
-            const tdExp = document.createElement("td");
-            tdExp.innerText = formatDate(expiry);
+            const expDiv = document.createElement("div");
+            expDiv.className = "future-expiry";
+            expDiv.innerText = formatDate(expiry);
 
-            const tdLots = document.createElement("td");
             const input = document.createElement("input");
             input.type = "number";
             input.className = "future-lots";
             input.dataset.expiry = expiry;
-            tdLots.appendChild(input);
 
-            tr.appendChild(tdExp);
-            tr.appendChild(tdLots);
-            table.appendChild(tr);
+            box.appendChild(expDiv);
+            box.appendChild(input);
+            container.appendChild(box);
         });
 
-        app.appendChild(table);
+        app.appendChild(container);
 
         // -------------------------------
         // Create Scenario button
@@ -138,6 +192,8 @@ function renderScenarioGenerator(data) {
         app.appendChild(btn);
     }
 
+
+
     // -------------------------------
     // Options by expiry
     // -------------------------------
@@ -146,22 +202,34 @@ function renderScenarioGenerator(data) {
         optHeader.innerText = "Options";
         app.appendChild(optHeader);
 
-        data.options.forEach(group => {
-            const header = document.createElement("div");
-            header.className = "expiry-header";
-            header.innerText = formatDate(group.expiry);
+        const optionsContainer = document.createElement("div");
+        optionsContainer.className = "options-container";
 
+        data.options.forEach(group => {
+            const column = document.createElement("div");
+            column.className = "expiry-column";
+
+            // ---------- Header row ----------
+            const headerRow = document.createElement("div");
+            headerRow.className = "expiry-header-row";
+
+            const title = document.createElement("span");
+            title.innerText = formatDate(group.expiry);
+
+            const toggle = document.createElement("span");
+            toggle.className = "expiry-toggle";
+            toggle.innerText = "−"; // expanded by default
+
+            headerRow.appendChild(title);
+            headerRow.appendChild(toggle);
+
+            // ---------- Body ----------
             const body = document.createElement("div");
             body.className = "expiry-body";
 
-            header.onclick = () => {
-                body.style.display =
-                    body.style.display === "none" ? "block" : "none";
-            };
-
             const table = document.createElement("table");
             const hdr = document.createElement("tr");
-            hdr.innerHTML = "<th>Call Lots</th><th>Strike</th><th>Put Lots</th>";
+            hdr.innerHTML = "<th>Call</th><th>Strike</th><th>Put</th>";
             table.appendChild(hdr);
 
             group.strikes.forEach(strike => {
@@ -191,14 +259,23 @@ function renderScenarioGenerator(data) {
                 tr.appendChild(tdCall);
                 tr.appendChild(tdStrike);
                 tr.appendChild(tdPut);
-
                 table.appendChild(tr);
             });
 
             body.appendChild(table);
-            app.appendChild(header);
-            app.appendChild(body);
+
+            // ---------- Toggle logic ----------
+            headerRow.onclick = () => {
+                const collapsed = column.classList.toggle("collapsed");
+                toggle.innerText = collapsed ? "+" : "−";
+            };
+
+            column.appendChild(headerRow);
+            column.appendChild(body);
+            optionsContainer.appendChild(column);
         });
+
+        app.appendChild(optionsContainer);
     }
 }
 
