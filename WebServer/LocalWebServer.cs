@@ -164,8 +164,7 @@ namespace Server
                     else
                     {
                         if (
-                                rawUrl.StartsWith("/api/scenario/create", StringComparison.OrdinalIgnoreCase)
-                                && request.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase)
+                                rawUrl.StartsWith("/api/scenario/create", StringComparison.OrdinalIgnoreCase) && request.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase)
                             )
                         {
                             context.Response.StatusCode = (int)HttpStatusCode.OK;
@@ -347,28 +346,84 @@ namespace Server
 
                         }
                             else
-                            {
-                                string filename = Path.GetFileName(rawUrl);
-                                filename = string.IsNullOrEmpty(filename) ? "HomePage.html" : filename;
-
-                                string path = Path.Combine(_baseFolder, filename);
-                                if (!File.Exists(path))
+                            {   if (rawUrl.StartsWith("/api/scenario/view", StringComparison.OrdinalIgnoreCase) && request.HttpMethod.Equals("GET", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                                    msg = Encoding.UTF8.GetBytes("404 - Page not found.");
+                                    context.Response.StatusCode = (int)HttpStatusCode.OK;
+                                    contentType = "application/json";
+
+                                    var scenarios = ScenarioOrchestrator.Instance.GetAllScenarios();
+
+                                    var scenarioDtos = new List<ScenarioDto>();
+
+                                    foreach (var kvp in scenarios)
+                                    {
+                                        var scenarioName = kvp.Key;
+                                        var scenario = kvp.Value;
+
+                                        var tradeDtos = new List<ScenarioTradeDto>();
+
+                                        foreach (var trade in scenario.Trades)
+                                        {
+                                            var greeks = scenario.TradeGreeks[trade];
+
+                                            tradeDtos.Add(new ScenarioTradeDto(
+                                                TradingSymbol: trade.Instrument.TradingSymbol,
+                                                Lots: trade.Lots,
+                                                Quantity: trade.Lots * trade.Instrument.LotSize,
+                                                NPV: greeks.NPV,
+                                                Delta: greeks.Delta,
+                                                Gamma: greeks.Gamma,
+                                                Vega: greeks.Vega,
+                                                Theta: greeks.Theta,
+                                                Rho: greeks.Rho
+                                            ));
+                                        }
+
+                                        scenarioDtos.Add(new ScenarioDto(
+                                            ScenarioName: scenarioName,
+                                            Trades: tradeDtos
+                                        ));
+                                    }
+
+                                    var dto = new ScenarioViewerSnapshotDto(
+                                        Scenarios: scenarioDtos
+                                    );
+
+                                    string json = System.Text.Json.JsonSerializer.Serialize(
+                                        dto,
+                                        new System.Text.Json.JsonSerializerOptions
+                                        {
+                                            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                                            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
+                                            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                                        });
+
+                                    msg = Encoding.UTF8.GetBytes(json);                                    
                                 }
                                 else
                                 {
-                                    context.Response.StatusCode = (int)HttpStatusCode.OK;
-                                    contentType = filename switch
+                                    string filename = Path.GetFileName(rawUrl);
+                                    filename = string.IsNullOrEmpty(filename) ? "HomePage.html" : filename;
+    
+                                    string path = Path.Combine(_baseFolder, filename);
+                                    if (!File.Exists(path))
                                     {
-                                        string f when f.EndsWith(".js") => "text/javascript",
-                                        string f when f.EndsWith(".css") => "text/css",
-                                        string f when f.EndsWith(".html") => "text/html",
-                                        _ => "application/octet-stream"
-                                    };
-
-                                    msg = await File.ReadAllBytesAsync(path);
+                                        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                                        msg = Encoding.UTF8.GetBytes("404 - Page not found.");
+                                    }
+                                    else
+                                    {
+                                        context.Response.StatusCode = (int)HttpStatusCode.OK;
+                                        contentType = filename switch
+                                        {
+                                            string f when f.EndsWith(".js") => "text/javascript",
+                                            string f when f.EndsWith(".css") => "text/css",
+                                            string f when f.EndsWith(".html") => "text/html",
+                                            _ => "application/octet-stream"
+                                        };
+    
+                                        msg = await File.ReadAllBytesAsync(path);
+                                    }
                                 }
                             }
                     }

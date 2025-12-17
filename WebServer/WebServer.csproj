@@ -30,7 +30,6 @@
   </Content>
 </ItemGroup>
 
-
   <ItemGroup>
     <ProjectReference Include="../BrokerInterfaces/BrokerInterfaces.csproj" />
     <ProjectReference Include="../Brokers/Zerodha/Zerodha.csproj" />

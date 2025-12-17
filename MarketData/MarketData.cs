@@ -31,6 +31,7 @@ namespace MarketData
     public sealed class MarketData
     {
         public event Action<AtomicMarketSnapDTO>? OnMarketDataUpdated;
+        public event Action<AtomicMarketSnap>? OnAtomicMarketSnapUpdated;
         private Task? _backgroundUpdaterTask; // Add this field
         //private readonly CancellationTokenSource _cts = new();
         private readonly CancellationToken _token;   // ✅ externally provided token
@@ -650,6 +651,7 @@ namespace MarketData
                     UpdateAtomicSnapshot(volSurface,_forwardCurve);
 
                     // Step 10: Raise event with a thread-safe snapshot reference
+                    OnAtomicMarketSnapUpdated?.Invoke(_atomicSnapshot);
                     OnMarketDataUpdated?.Invoke(_atomicSnapshot.ToDTO());
                 }
             }
