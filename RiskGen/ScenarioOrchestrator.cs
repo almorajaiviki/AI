@@ -27,17 +27,26 @@ namespace RiskGen
     // ---------------------------------------------------------------    
     public sealed class ScenarioOrchestrator : IDisposable
     {
+        private readonly object _stateLock = new();
+        private volatile bool _running = false;
+        // latest snapshot received from MarketData
+        private AtomicMarketSnap? _latestSnap;
+        // signal that something changed
+        private int _dirty = 0; // 0 = clean, 1 = dirty
+        // background task
+        private Task? _workerTask;
+        private CancellationTokenSource? _cts;
+        // throttling interval
+        private readonly TimeSpan _recalcInterval = TimeSpan.FromSeconds(1);
+
         private static readonly Lazy<ScenarioOrchestrator> _instance =
             new(() => new ScenarioOrchestrator());
 
         public static ScenarioOrchestrator Instance => _instance.Value;
 
         private readonly ConcurrentDictionary<string, Scenario> _scenarios = new();
-
-        // 0 = stopped, 1 = running
-        private int _running = 0;
-
-        private bool IsRunning => Volatile.Read(ref _running) == 1;
+        
+        private bool IsRunning => Volatile.Read(ref _running) == true;
 
         private ScenarioOrchestrator() { }
 
@@ -46,15 +55,36 @@ namespace RiskGen
         // -----------------------------------------------------------
         public void Start()
         {
-            Interlocked.Exchange(ref _running, 1);
+            lock (_stateLock)
+            {
+                if (_running)
+                    return;
+
+                _running = true;
+                _cts = new CancellationTokenSource();
+
+                _workerTask = Task.Run(() => WorkerLoop(_cts.Token));
+            }
         }
 
         public void Shutdown()
         {
-            Interlocked.Exchange(ref _running, 0);
-            _scenarios.Clear();
+            lock (_stateLock)
+            {
+                if (!_running)
+                    return;
+
+                _running = false;
+
+                _cts?.Cancel();
+                _cts = null;
+                _workerTask = null;
+
+                _scenarios.Clear();
+            }
         }
 
+        
         public void Dispose() => Shutdown();
 
         // -----------------------------------------------------------
@@ -62,13 +92,14 @@ namespace RiskGen
         // -----------------------------------------------------------
         public void OnMarketUpdate(AtomicMarketSnap snap)
         {
-            if (!IsRunning || snap == null)
+            if (!_running || snap == null)
                 return;
 
-            foreach (var scenario in _scenarios.Values)
-            {
-                scenario.CalculateGreeks(snap);
-            }
+            // Store latest snapshot (overwrite is intended)
+            _latestSnap = snap;
+
+            // Mark dirty (lock-free)
+            Interlocked.Exchange(ref _dirty, 1);
         }
 
         // -----------------------------------------------------------
@@ -144,5 +175,36 @@ namespace RiskGen
 
         public IReadOnlyDictionary<string, Scenario> GetAllScenarios()
             => _scenarios;
+        
+        private async Task WorkerLoop(CancellationToken token)
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    await Task.Delay(_recalcInterval, token);
+
+                    // fast check: was anything updated?
+                    if (Interlocked.Exchange(ref _dirty, 0) == 0)
+                        continue;
+
+                    var snap = _latestSnap;
+                    if (snap == null)
+                        continue;
+
+                    // Recalculate all scenarios
+                    foreach (var scenario in _scenarios.Values)
+                    {
+                        scenario.CalculateGreeks(snap);
+                    }
+
+                    // (Later) → raise OnScenariosUpdated event here
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // expected on shutdown
+            }
+        }
     }
 }

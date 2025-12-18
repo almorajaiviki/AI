@@ -5,6 +5,7 @@ using BrokerInterfaces;
 using System.Net.WebSockets;
 using QuantitativeAnalytics;
 using WebSocketServer;
+using RiskGen;
 
 namespace Server
 {
@@ -104,6 +105,9 @@ namespace Server
             var webSocketServer = WebsocketServer.Instance(wsPrefix);
             Console.WriteLine("WebSocket server started at " + wsPrefix);
 
+            // 1️⃣ Start orchestrator
+            ScenarioOrchestrator.Instance.Start();
+
             return (webServer, webSocketServer);
         }
 
@@ -130,6 +134,10 @@ namespace Server
 
             // MarketData → WebSocket broadcast
             SubscribeMarketDataToWebSocket(marketData, webSocketServer);
+
+            // 2️⃣ Wire atomic snapshot → orchestrator
+            marketData.OnAtomicMarketSnapUpdated +=
+                ScenarioOrchestrator.Instance.OnMarketUpdate;
         }
 
         private static async Task RunApplicationLoop(CancellationTokenSource cts)
@@ -280,6 +288,9 @@ namespace Server
 
             try
             {
+                //shutdown scenario orchestrator first
+                ScenarioOrchestrator.Instance.Shutdown();
+
                 // ✅ Stop MarketData gracefully first
                 if (marketData != null)
                 {
@@ -296,6 +307,8 @@ namespace Server
                 Console.WriteLine("⏳ Logging out from broker...");
                 bool bLogout = await authService.LogoutAsync();
                 Console.WriteLine(bLogout ? "✅ Broker logout successful." : "⚠️ Broker logout failed.");
+
+                
             }
             catch (Exception ex)
             {
