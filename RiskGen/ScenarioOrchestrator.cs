@@ -27,6 +27,7 @@ namespace RiskGen
     // ---------------------------------------------------------------    
     public sealed class ScenarioOrchestrator : IDisposable
     {
+        public event Action? OnScenariosUpdated;
         private readonly object _stateLock = new();
         private volatile bool _running = false;
         // latest snapshot received from MarketData
@@ -198,7 +199,9 @@ namespace RiskGen
                         scenario.CalculateGreeks(snap);
                     }
 
-                    // (Later) → raise OnScenariosUpdated event here
+                    // raise OnScenariosUpdated event here
+                    // 🔔 notify listeners
+                    OnScenariosUpdated?.Invoke();
                 }
             }
             catch (TaskCanceledException)

@@ -112,10 +112,7 @@ namespace Server
         }
 
 
-        private static void SetupMarketDataFlow(
-            IBrokerWebSocketService<ZerodhaSubscriptionDepthAck> brokerWebSocketService,
-            MarketData.MarketData marketData,
-            WebsocketServer webSocketServer)
+        private static void SetupMarketDataFlow(            IBrokerWebSocketService<ZerodhaSubscriptionDepthAck> brokerWebSocketService,            MarketData.MarketData marketData,            WebsocketServer webSocketServer)
         {
             brokerWebSocketService.OnPriceFeedUpdate += (PriceFeedUpdate brokerUpdate) =>
             {
@@ -138,6 +135,20 @@ namespace Server
             // 2️⃣ Wire atomic snapshot → orchestrator
             marketData.OnAtomicMarketSnapUpdated +=
                 ScenarioOrchestrator.Instance.OnMarketUpdate;
+            
+            // (opposite flow) 3️⃣ Listen to orchestrator scenario updates
+            ScenarioOrchestrator.Instance.OnScenariosUpdated += () =>
+            {
+                try
+                {
+                    var dto = BuildScenarioViewerSnapshot();
+                    webSocketServer.EnqueueBroadcast(dto, "scenario");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Scenario WS] Push failed: {ex.Message}");
+                }
+            };
         }
 
         private static async Task RunApplicationLoop(CancellationTokenSource cts)
@@ -484,7 +495,7 @@ namespace Server
                 {
                     try
                     {
-                        webSocketServer.EnqueueBroadcast(snap);
+                        webSocketServer.EnqueueBroadcast(snap, "ams");
                     }
                     catch (Exception ex)
                     {
@@ -537,6 +548,48 @@ namespace Server
             {
                 throw new InvalidOperationException($"Error reading configuration file: {ex.Message}", ex);
             }
+        }
+    
+        private static ScenarioViewerSnapshotDto BuildScenarioViewerSnapshot()
+        {
+            var scenarios = ScenarioOrchestrator.Instance.GetAllScenarios();
+
+            var scenarioDtos = new List<ScenarioDto>();
+
+            foreach (var kvp in scenarios)
+            {
+                var scenarioName = kvp.Key;
+                var scenario = kvp.Value;
+
+                var tradeDtos = new List<ScenarioTradeDto>();
+
+                foreach (var trade in scenario.Trades)
+                {
+                    if (!scenario.TradeGreeks.TryGetValue(trade, out var greeks))
+                        continue;
+
+                    tradeDtos.Add(new ScenarioTradeDto(
+                        TradingSymbol: trade.Instrument.TradingSymbol,
+                        Lots: trade.Lots,
+                        Quantity: trade.Lots * trade.Instrument.LotSize,
+                        NPV: greeks.NPV,
+                        Delta: greeks.Delta,
+                        Gamma: greeks.Gamma,
+                        Vega: greeks.Vega,
+                        Theta: greeks.Theta,
+                        Rho: greeks.Rho
+                    ));
+                }
+
+                scenarioDtos.Add(new ScenarioDto(
+                    ScenarioName: scenarioName,
+                    Trades: tradeDtos
+                ));
+            }
+
+            return new ScenarioViewerSnapshotDto(
+                Scenarios: scenarioDtos
+            );
         }
     }
 

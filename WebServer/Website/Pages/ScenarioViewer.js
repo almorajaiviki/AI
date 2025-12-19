@@ -1,3 +1,6 @@
+let scenarioSocket = null;
+let scenarioDomIndex = new Map();
+// key = scenarioName|tradingSymbol
 window.addEventListener("load", onPageLoad);
 
 async function onPageLoad() {
@@ -11,6 +14,7 @@ async function onPageLoad() {
         console.log("Scenario view snapshot:", data);
 
         renderScenarioViewer(data);
+        connectScenarioWebSocket();   // 👈 ADD THIS (for websocket updates)
     } catch (err) {
         console.error("Failed to load scenario viewer", err);
     }
@@ -123,15 +127,36 @@ function renderScenarioViewer(data) {
                 <td class="symbol">${t.tradingSymbol}</td>
                 <td class="qty">${t.lots}</td>
                 <td class="qty">${t.quantity}</td>
-                <td>${fmt(t.npv)}</td>
-                <td>${fmt(t.delta)}</td>
-                <td>${fmt(t.gamma)}</td>
-                <td>${fmt(t.vega)}</td>
-                <td>${fmt(t.theta)}</td>
-                <td>${fmt(t.rho)}</td>
+                <td class="npv"></td>
+                <td class="delta"></td>
+                <td class="gamma"></td>
+                <td class="vega"></td>
+                <td class="theta"></td>
+                <td class="rho"></td>
             `;
 
             table.appendChild(tr);
+
+            // 🔹 index cells
+            const cells = tr.children;
+            scenarioDomIndex.set(
+                `${scenario.scenarioName}|${t.tradingSymbol}`,
+                {
+                    npv: cells[3],
+                    delta: cells[4],
+                    gamma: cells[5],
+                    vega: cells[6],
+                    theta: cells[7],
+                    rho: cells[8]
+                }
+            );
+
+            // initial values
+            updateTradeCells(
+                scenario.scenarioName,
+                t.tradingSymbol,
+                t
+            );
         });
 
         block.appendChild(table);
@@ -145,4 +170,61 @@ function renderScenarioViewer(data) {
 function fmt(x) {
     if (x === null || x === undefined) return "";
     return Number(x).toFixed(4);
+}
+
+function updateTradeCells(scenarioName, tradingSymbol, trade) {
+    const key = `${scenarioName}|${tradingSymbol}`;
+    const dom = scenarioDomIndex.get(key);
+    if (!dom) return;
+
+    dom.npv.textContent   = fmt(trade.npv);
+    dom.delta.textContent = fmt(trade.delta);
+    dom.gamma.textContent = fmt(trade.gamma);
+    dom.vega.textContent  = fmt(trade.vega);
+    dom.theta.textContent = fmt(trade.theta);
+    dom.rho.textContent   = fmt(trade.rho);
+}
+
+function connectScenarioWebSocket() {
+    if (scenarioSocket) return;
+
+    scenarioSocket = new WebSocket("ws://localhost:50001");
+
+    scenarioSocket.onopen = () => {
+        console.log("Scenario WS connected");
+    };
+
+    scenarioSocket.onclose = () => {
+        console.log("Scenario WS closed");
+        scenarioSocket = null;
+    };
+
+    scenarioSocket.onerror = err => {
+        console.error("Scenario WS error", err);
+    };
+
+    scenarioSocket.onmessage = evt => {
+        try {
+            const msg = JSON.parse(evt.data);
+            if (msg.type !== "scenario") return;
+
+            applyScenarioUpdate(msg.data);
+        } catch (err) {
+            console.error("Scenario WS parse error", err);
+        }
+    };
+}
+
+function applyScenarioUpdate(snapshot) {
+    if (!snapshot.scenarios) return;
+
+    snapshot.scenarios.forEach(scenario => {
+        scenario.trades.forEach(trade => {
+            updateTradeCells(
+                scenario.scenarioName,
+                trade.tradingSymbol,
+                trade
+            );
+        });
+    });
 }

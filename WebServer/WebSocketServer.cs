@@ -135,11 +135,15 @@ namespace WebSocketServer
                 Console.WriteLine($"[WebSocketServer] Enqueue error: {ex.Message}");
             }
         } */
-        public void EnqueueBroadcast<T>(T data)
+        public void EnqueueBroadcast<T>(T data, string type)
         {
             try
             {
-                string json = JsonSerializer.Serialize(data, _fastJsonOptions);
+                var wsMsg = new WsMessage<T>(
+                    Type: type,
+                    Data: data
+                );
+                string json = JsonSerializer.Serialize(wsMsg, _fastJsonOptions);
                 if (!_broadcastChannel.Writer.TryWrite(json))
                 {
                     Console.WriteLine("[WebSocketServer] Broadcast queue full, dropping message");
@@ -227,4 +231,9 @@ namespace WebSocketServer
             _cts.Dispose();
         }
     }
+
+    public sealed record WsMessage<T>(
+        string Type,
+        T Data
+    );
 }

@@ -19,6 +19,7 @@ const socket = new WebSocket("ws://localhost:50001");
 socket.onmessage = function (event) {
     try {
         const newAMS = JSON.parse(event.data);
+        if (newAMS.type !== "ams") return;
         updateMarketSnapshot(newAMS);
         currentAMS = newAMS;
     } catch (err) {
