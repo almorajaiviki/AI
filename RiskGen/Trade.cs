@@ -87,9 +87,15 @@ namespace RiskGen
 
             // Vega in your codebase is "VegaByParam" returning per-parameter vegas.
             // Here we aggregate total vega as the sum of parameter vegas
-            double vegaPerUnit = greeksCalculator.VolRiskByParam(
-                    productType, isCall, forward, strike,
-                    rfr, tte, volSurface).Sum(v => v.Amount);
+            var volRisk = greeksCalculator.VolRiskByParam(
+                productType, isCall, forward, strike,
+                rfr, tte, volSurface
+            );
+
+            double vegaPerUnit   = GetVolRisk(volRisk, VolatilityParam.Vega);
+            double vannaPerUnit  = GetVolRisk(volRisk, VolatilityParam.Vanna);
+            double volgaPerUnit  = GetVolRisk(volRisk, VolatilityParam.Volga);
+            double correlPerUnit = GetVolRisk(volRisk, VolatilityParam.Correl);
 
             double thetaPerUnit = greeksCalculator.Theta(
                 productType, isCall, forward, strike,
@@ -103,13 +109,28 @@ namespace RiskGen
             double scale = Lots * Instrument.LotSize;
 
             return new TradeGreeks(
-                NPV:   npvPerUnit   * scale,
-                Delta: deltaPerUnit * scale,
-                Gamma: gammaPerUnit * scale,
-                Vega:  vegaPerUnit  * scale,
-                Theta: thetaPerUnit * scale,
-                Rho:   rhoPerUnit   * scale                
+                NPV:    npvPerUnit    * scale,
+                Delta:  deltaPerUnit  * scale,
+                Gamma:  gammaPerUnit  * scale,
+                Vega:   vegaPerUnit   * scale,
+                Vanna:  vannaPerUnit  * scale,
+                Volga:  volgaPerUnit  * scale,
+                Correl: correlPerUnit * scale,
+                Theta:  thetaPerUnit  * scale,
+                Rho:    rhoPerUnit    * scale
             );
+        }
+
+        static double GetVolRisk(
+            IEnumerable<(string ParamName, double Amount)> volRisk,
+            VolatilityParam param)
+        {
+            foreach (var (name, value) in volRisk)
+            {
+                if (string.Equals(name, param.ToString(), StringComparison.OrdinalIgnoreCase))
+                    return value;
+            }
+            return 0.0;
         }
     }
 
@@ -118,8 +139,11 @@ namespace RiskGen
         double Delta,
         double Gamma,
         double Vega,
+        double Vanna,
+        double Volga,
+        double Correl,
         double Theta,
-        double Rho        
+        double Rho
     );
 
     public sealed record TradeNPV(

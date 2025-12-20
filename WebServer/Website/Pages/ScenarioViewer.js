@@ -111,10 +111,16 @@ function renderScenarioViewer(data) {
             <th>Trading Symbol</th>
             <th>Lots</th>
             <th>Qty</th>
+
             <th>NPV</th>
             <th>Delta</th>
             <th>Gamma</th>
+
             <th>Vega</th>
+            <th>Vanna</th>
+            <th>Volga</th>
+            <th>Correl</th>
+
             <th>Theta</th>
             <th>Rho</th>
         `;
@@ -127,10 +133,16 @@ function renderScenarioViewer(data) {
                 <td class="symbol">${t.tradingSymbol}</td>
                 <td class="qty">${t.lots}</td>
                 <td class="qty">${t.quantity}</td>
+
                 <td class="npv"></td>
                 <td class="delta"></td>
                 <td class="gamma"></td>
+
                 <td class="vega"></td>
+                <td class="vanna"></td>
+                <td class="volga"></td>
+                <td class="correl"></td>
+
                 <td class="theta"></td>
                 <td class="rho"></td>
             `;
@@ -142,12 +154,17 @@ function renderScenarioViewer(data) {
             scenarioDomIndex.set(
                 `${scenario.scenarioName}|${t.tradingSymbol}`,
                 {
-                    npv: cells[3],
-                    delta: cells[4],
-                    gamma: cells[5],
-                    vega: cells[6],
-                    theta: cells[7],
-                    rho: cells[8]
+                    npv:    cells[3],
+                    delta:  cells[4],
+                    gamma:  cells[5],
+
+                    vega:   cells[6],
+                    vanna:  cells[7],
+                    volga:  cells[8],
+                    correl: cells[9],
+
+                    theta:  cells[10],
+                    rho:    cells[11]
                 }
             );
 
@@ -177,12 +194,17 @@ function updateTradeCells(scenarioName, tradingSymbol, trade) {
     const dom = scenarioDomIndex.get(key);
     if (!dom) return;
 
-    dom.npv.textContent   = fmt(trade.npv);
-    dom.delta.textContent = fmt(trade.delta);
-    dom.gamma.textContent = fmt(trade.gamma);
-    dom.vega.textContent  = fmt(trade.vega);
-    dom.theta.textContent = fmt(trade.theta);
-    dom.rho.textContent   = fmt(trade.rho);
+    dom.npv.textContent    = fmt(trade.npv);
+    dom.delta.textContent  = fmt(trade.delta);
+    dom.gamma.textContent  = fmt(trade.gamma);
+
+    dom.vega.textContent   = fmt(trade.vega);
+    dom.vanna.textContent  = fmt(trade.vanna);
+    dom.volga.textContent  = fmt(trade.volga);
+    dom.correl.textContent = fmt(trade.correl);
+
+    dom.theta.textContent  = fmt(trade.theta);
+    dom.rho.textContent    = fmt(trade.rho);
 }
 
 function connectScenarioWebSocket() {

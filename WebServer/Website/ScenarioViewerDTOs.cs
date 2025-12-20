@@ -13,10 +13,16 @@ namespace Server
         string TradingSymbol,
         int Lots,
         int Quantity,
+
         double NPV,
         double Delta,
         double Gamma,
+
         double Vega,
+        double Vanna,
+        double Volga,
+        double Correl,
+
         double Theta,
         double Rho
     );

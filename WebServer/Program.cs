@@ -572,10 +572,16 @@ namespace Server
                         TradingSymbol: trade.Instrument.TradingSymbol,
                         Lots: trade.Lots,
                         Quantity: trade.Lots * trade.Instrument.LotSize,
+
                         NPV: greeks.NPV,
                         Delta: greeks.Delta,
                         Gamma: greeks.Gamma,
+
                         Vega: greeks.Vega,
+                        Vanna: greeks.Vanna,
+                        Volga: greeks.Volga,
+                        Correl: greeks.Correl,
+
                         Theta: greeks.Theta,
                         Rho: greeks.Rho
                     ));
