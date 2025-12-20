@@ -35,7 +35,7 @@ namespace QuantitativeAnalytics
         /// Example for Black76: { ("ATMVol", 0.01) } = flat 1 vol point shift.
         /// If null, defaults to { ("ATM", 0.01) }.
         /// </summary>
-        IEnumerable<(string ParamName, double Amount)> VegaByParam(
+        IEnumerable<(string ParamName, double Amount)> VolRiskByParam(
             ProductType productType,
             bool isCall,
             double forward,

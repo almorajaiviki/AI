@@ -221,18 +221,19 @@ function buildOptionChainTables(data) {
         let html = `
             <table>
                 <tr>
-                    <th colspan="12">CALLS</th>
+                    <th colspan="14">CALLS</th>
                     <th rowspan="2">Strike<br/>(% Fwd)</th>
-                    <th colspan="12">PUTS</th>
+                    <th colspan="14">PUTS</th>
                 </tr>
                 <tr>
-                    <th>Rho</th><th>Theta</th><th>Vega</th><th>Gamma</th><th>Delta</th>
+                    <th>Rho</th><th>Theta</th><th>Volga</th><th>Vanna</th><th>Vega</th>
+                    <th>Gamma</th><th>Delta</th>
                     <th>OI</th><th>Bid</th><th>BidSprd</th>
                     <th>NPV</th><th>AskSprd</th><th>Ask</th><th>IV</th>
 
                     <th>IV</th><th>Bid</th><th>BidSprd</th>
                     <th>NPV</th><th>AskSprd</th><th>Ask</th><th>OI</th>
-                    <th>Delta</th><th>Gamma</th><th>Vega</th><th>Theta</th><th>Rho</th>
+                    <th>Delta</th><th>Gamma</th><th>Vega</th><th>Vanna</th><th>Volga</th><th>Theta</th><th>Rho</th>
                 </tr>
         `;
 
@@ -245,6 +246,8 @@ function buildOptionChainTables(data) {
                 <tr id="row_${c}">
                     <td id="${c}_rho"></td>
                     <td id="${c}_theta"></td>
+                    <td id="${c}_volga"></td>
+                    <td id="${c}_vanna"></td>
                     <td id="${c}_vega"></td>
                     <td id="${c}_gamma"></td>
                     <td id="${c}_delta"></td>
@@ -268,6 +271,8 @@ function buildOptionChainTables(data) {
                     <td id="${p}_delta"></td>
                     <td id="${p}_gamma"></td>
                     <td id="${p}_vega"></td>
+                    <td id="${p}_vanna"></td>
+                    <td id="${p}_volga"></td>
                     <td id="${p}_theta"></td>
                     <td id="${p}_rho"></td>
                 </tr>
@@ -347,7 +352,9 @@ function updateMarketSnapshot(data) {
                 forward = Number(data.forwardByExpiry[pair.expiry]);
             }
 
-            // === Update CALL side ===
+            // === Update CALL side ===            
+            updateCell(`${cToken}_volga`, pair.c_volga ?? 0, 4);
+            updateCell(`${cToken}_vanna`, pair.c_vanna ?? 0, 4);
             updateCell(`${cToken}_vega`, pair.c_vega ?? 0, 4);
             updateCell(`${cToken}_theta`, pair.c_theta ?? 0, 4);
             updateCell(`${cToken}_rho`, pair.c_rho ?? 0, 4);
@@ -376,6 +383,8 @@ function updateMarketSnapshot(data) {
             updateCell(`${pToken}_delta`, pair.p_delta ?? 0, 4);
             updateCell(`${pToken}_gamma`, pair.p_gamma ?? 0, 4);
             updateCell(`${pToken}_vega`, pair.p_vega ?? 0, 4);
+            updateCell(`${pToken}_vanna`, pair.p_vanna ?? 0, 4);
+            updateCell(`${pToken}_volga`, pair.p_volga ?? 0, 4);
             updateCell(`${pToken}_theta`, pair.p_theta ?? 0, 4);
             updateCell(`${pToken}_rho`, pair.p_rho ?? 0, 4);
 
@@ -406,13 +415,13 @@ function applyShadingForRow(rowElem, strike, forward, cToken, pToken) {
     const cells = rowElem.querySelectorAll("td");
 
     // CALL block = columns 0–8 (9 cells)
-    const callCells = Array.from(cells).slice(0, 9);
+    const callCells = Array.from(cells).slice(0, 14);
 
     // STRIKE column = index 9 (we skip shading it)
     // cells[9]
 
     // PUT block = columns 10–18 (9 cells)
-    const putCells = Array.from(cells).slice(10, 19);
+    const putCells = Array.from(cells).slice(15, 29);
 
     // --- Clear old shading ---
     for (const td of callCells) td.classList.remove("itm-call");

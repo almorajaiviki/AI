@@ -214,7 +214,10 @@ namespace MarketData
                         C_iv = pair.CallGreeks.IV_Used,
                         C_delta = pair.CallGreeks.Delta,
                         C_gamma = pair.CallGreeks.Gamma,
-                        C_vega = pair.CallGreeks.Vega.Length > 0 ? pair.CallGreeks.Vega[0].Item2 : 0,
+                        C_vega   = GetVolRisk(pair.CallGreeks, VolatilityParam.Vega),
+                        C_vanna  = GetVolRisk(pair.CallGreeks, VolatilityParam.Vanna),
+                        C_volga  = GetVolRisk(pair.CallGreeks, VolatilityParam.Volga),
+                        C_correl = GetVolRisk(pair.CallGreeks, VolatilityParam.Correl),
                         C_theta = pair.CallGreeks.Theta,
                         C_rho = pair.CallGreeks.Rho,
                         C_npv = pair.CallGreeks.NPV,
@@ -230,7 +233,10 @@ namespace MarketData
                         P_iv = pair.PutGreeks.IV_Used,
                         P_delta = pair.PutGreeks.Delta,
                         P_gamma = pair.PutGreeks.Gamma,
-                        P_vega = pair.PutGreeks.Vega.Length > 0 ? pair.PutGreeks.Vega[0].Item2 : 0,
+                        P_vega   = GetVolRisk(pair.PutGreeks, VolatilityParam.Vega),
+                        P_vanna  = GetVolRisk(pair.PutGreeks, VolatilityParam.Vanna),
+                        P_volga  = GetVolRisk(pair.PutGreeks, VolatilityParam.Volga),
+                        P_correl = GetVolRisk(pair.PutGreeks, VolatilityParam.Correl),
                         P_theta = pair.PutGreeks.Theta,
                         P_rho = pair.PutGreeks.Rho,
                         P_npv = pair.PutGreeks.NPV,
@@ -266,6 +272,18 @@ namespace MarketData
                 ForwardCurve = _forwardCurve != null ? ForwardCurveDTO.FromForwardCurve(_forwardCurve) : null,
                 ForwardByExpiry = expiryForwardMap
             };
+        }
+
+        private static double GetVolRisk(
+            OptionGreeks greeks,
+            VolatilityParam param)
+        {
+            foreach (var (name, value) in greeks.VolRisk)
+            {
+                if (string.Equals(name, param.ToString(), StringComparison.OrdinalIgnoreCase))
+                    return value;
+            }
+            return 0.0;
         }
 
         /// <summary>
@@ -447,7 +465,11 @@ namespace MarketData
         public double C_iv { get; set; }
         public double C_delta { get; set; }
         public double C_gamma { get; set; }
+        // Call – volatility risks
         public double C_vega { get; set; }
+        public double C_vanna { get; set; }
+        public double C_volga { get; set; }
+        public double C_correl { get; set; }
         public double C_theta { get; set; }
         public double C_rho { get; set; }
         public double C_npv { get; set; }
@@ -462,8 +484,12 @@ namespace MarketData
         public double P_oi { get; set; }
         public double P_iv { get; set; }
         public double P_delta { get; set; }
-        public double P_gamma { get; set; }
+        public double P_gamma { get; set; }        
+        // Put – volatility risks
         public double P_vega { get; set; }
+        public double P_vanna { get; set; }
+        public double P_volga { get; set; }
+        public double P_correl { get; set; }
         public double P_theta { get; set; }
         public double P_rho { get; set; }
         public double P_npv { get; set; }

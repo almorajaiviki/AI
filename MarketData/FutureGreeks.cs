@@ -39,7 +39,7 @@ namespace MarketData
                 productType, isCall, futureSnapshot.Mid, strike,
                 riskFreeRate, timeToExpiry, volSurface);
 
-            Vega = greeksCalculator.VegaByParam(
+            Vega = greeksCalculator.VolRiskByParam(
                 productType, isCall, futureSnapshot.Mid, strike,
                 riskFreeRate, timeToExpiry, volSurface)
                 .ToImmutableArray();

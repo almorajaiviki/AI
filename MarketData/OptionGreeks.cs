@@ -10,7 +10,7 @@ namespace MarketData
         public double NPV { get; }
         public double Delta { get; }
         public double Gamma { get; }
-        public ImmutableArray<(string, double)> Vega { get; }
+        public ImmutableArray<(string, double)> VolRisk { get; }
         public double Rho { get; }
         public double Theta { get; }
         public double IV_Used { get; }
@@ -47,7 +47,7 @@ namespace MarketData
                 productType, isCall, impliedFuture, strike,
                 riskFreeRate, timeToExpiry, volSurface);
 
-            Vega = greeksCalculator.VegaByParam(
+            VolRisk = greeksCalculator.VolRiskByParam(
                 productType, isCall, impliedFuture, strike,
                 riskFreeRate, timeToExpiry, volSurface)
                 .ToImmutableArray();
@@ -67,7 +67,7 @@ namespace MarketData
         public double NPV { get; set; }
         public double Delta { get; set; }
         public double Gamma { get; set; }
-        public ImmutableArray<(string, double)> Vega { get; set; }
+        public ImmutableArray<(string, double)> VolRisk { get; set; }
         public double Rho { get; set; }
         public double Theta { get; set; }
         public double IV_Used { get; set; }
@@ -77,7 +77,7 @@ namespace MarketData
             NPV = greeks.NPV;
             Delta = greeks.Delta;
             Gamma = greeks.Gamma;
-            Vega = greeks.Vega;
+            VolRisk = greeks.VolRisk;
             Rho = greeks.Rho;
             Theta = greeks.Theta;
             IV_Used = greeks.IV_Used;

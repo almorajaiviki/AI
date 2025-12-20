@@ -96,4 +96,16 @@ namespace QuantitativeAnalytics
         Black76,
         Heston
     }
+
+    /// <summary>
+    /// Popular params for volatility models.
+    /// </summary>
+    public enum VolatilityParam
+    {
+        Vega,
+        Vanna,
+        Volga,
+        Correl
+    }
+
 }

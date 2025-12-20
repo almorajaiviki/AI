@@ -87,7 +87,7 @@ namespace RiskGen
 
             // Vega in your codebase is "VegaByParam" returning per-parameter vegas.
             // Here we aggregate total vega as the sum of parameter vegas
-            double vegaPerUnit = greeksCalculator.VegaByParam(
+            double vegaPerUnit = greeksCalculator.VolRiskByParam(
                     productType, isCall, forward, strike,
                     rfr, tte, volSurface).Sum(v => v.Amount);
 

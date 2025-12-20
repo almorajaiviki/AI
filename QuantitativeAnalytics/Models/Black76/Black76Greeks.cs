@@ -37,40 +37,79 @@ namespace QuantitativeAnalytics
             return gamma;
         }
 
-        internal static IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface volSurface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
+        internal static IEnumerable<(string ParamName, double Amount)> VolRiskByParam(
+            ProductType productType,
+            bool isCall,
+            double forwardPrice,
+            double strike,
+            double riskFreeRate,
+            double timeToExpiry,
+            IParametricModelSurface volSurface,
+            double forwardFracBump = 0.001, // 0.1%
+            double volBump = 0.01            // 1 vol point
+        )
         {
             if (productType != ProductType.Option)
-                yield break; // Vega not defined for futures
+                yield break;
 
-            bumps ??= volSurface.GetBumpParamNames().Select(p => (p, 0.01));
-
-            var allowedParams = new HashSet<string>(volSurface.GetBumpParamNames(), StringComparer.OrdinalIgnoreCase);
-
-            var invalidBumps = bumps.Where(b => !allowedParams.Contains(b.parameterName)).ToList();
-            if (invalidBumps.Any())
+            // ============================================================
+            // 0️⃣ Level (Parallel Vega)
+            // ============================================================
             {
-                var invalidParams = string.Join(", ", invalidBumps.Select(b => b.parameterName));
-                var allowedParamsString = string.Join(", ", allowedParams);
-                throw new ArgumentException($"Invalid parameter name(s): {invalidParams}. Allowed parameters are: {allowedParamsString}");
-            }
+                var volUp   = volSurface.Bump(+volBump);
+                var volDown = volSurface.Bump(-volBump);
 
-            foreach (var bump in bumps)
-            {
-                var singleBump = new[] { bump };
-
-                var bumpedUpSurface = volSurface.Bump(singleBump);
-                var bumpedDownSurface = volSurface.Bump(singleBump.Select(b => (b.parameterName, -b.bumpAmount)));
-
-                double npvUp = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, bumpedUpSurface);
-                double npvDown = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, bumpedDownSurface);
+                double npvUp   = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volUp);
+                double npvDown = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volDown);
 
                 double vega = (npvUp - npvDown) / 2.0;
-                double m = forwardPrice / strike;
 
-                yield return (m.ToString(), vega);
+                yield return (VolatilityParam.Vega.ToString(), vega);
+            }
+
+            // ============================================================
+            // 1️⃣ Vanna (Spot–Vol cross)
+            // ============================================================
+            {
+                double fUp   = forwardPrice * (1.0 + forwardFracBump);
+                double fDown = forwardPrice * (1.0 - forwardFracBump);
+
+                var volUp   = volSurface.Bump(+volBump);
+                var volDown = volSurface.Bump(-volBump);
+
+                double npvPP = NPV(productType, isCall, fUp,   strike, riskFreeRate, timeToExpiry, volUp);
+                double npvPM = NPV(productType, isCall, fUp,   strike, riskFreeRate, timeToExpiry, volDown);
+                double npvMP = NPV(productType, isCall, fDown, strike, riskFreeRate, timeToExpiry, volUp);
+                double npvMM = NPV(productType, isCall, fDown, strike, riskFreeRate, timeToExpiry, volDown);
+
+                double vanna = (npvPP - npvPM - npvMP + npvMM) / 4.0;
+
+                yield return (VolatilityParam.Vanna.ToString(), vanna);
+            }
+
+            // ============================================================
+            // 2️⃣ Volga (Vol curvature)
+            // ============================================================
+            {
+                var volUp   = volSurface.Bump(+volBump);
+                var volDown = volSurface.Bump(-volBump);
+
+                double npvUp   = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volUp);
+                double npvBase = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volSurface);
+                double npvDown = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volDown);
+
+                double volga = npvUp - 2.0 * npvBase + npvDown;
+
+                yield return (VolatilityParam.Volga.ToString(), volga);
+            }
+
+            // ============================================================
+            // 3️⃣ Correlation (not supported in Black-76)
+            // ============================================================
+            {
+                yield return (VolatilityParam.Correl.ToString(), 0.0);
             }
         }
-
         internal static double Theta(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface)
         {
             double npvAt = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volSurface);
@@ -170,8 +209,8 @@ namespace QuantitativeAnalytics
         public double Gamma(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
             => Black76Greeks.Gamma(productType, isCall, forward, strike, rate, tte, surface);
 
-        public IEnumerable<(string ParamName, double Amount)> VegaByParam(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface surface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
-            => Black76Greeks.VegaByParam(productType, isCall, forward, strike, rate, tte, surface, bumps);
+        public IEnumerable<(string ParamName, double Amount)> VolRiskByParam(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface surface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
+            => Black76Greeks.VolRiskByParam(productType, isCall, forward, strike, rate, tte, surface);
 
         public double Theta(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
             => Black76Greeks.Theta(productType, isCall, forward, strike, rate, tte, surface);

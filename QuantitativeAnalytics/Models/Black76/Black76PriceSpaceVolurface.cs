@@ -475,7 +475,7 @@ namespace QuantitativeAnalytics
 
         public IEnumerable<string> GetBumpParamNames()
         {
-            return new[] { "ATMVol" };
+            return new[] { "Vega", "Vanna", "Volga", "Correl" };
         }
 
         // ---------- DTO (serialize cached nodes as moneyness->IV) ----------
