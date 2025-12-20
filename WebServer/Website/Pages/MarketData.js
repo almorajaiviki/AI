@@ -187,26 +187,21 @@ function buildOptionChainTables(data) {
         groups[pair.expiry].push(pair);
     }
 
-    // --- Sort expiries ASC (RESTORED) ---
+    // --- Sort expiries ASC ---
     const sortedExpiries = Object.keys(groups).sort();
 
-    // --- Loop in sorted order ---
     for (const exp of sortedExpiries) {
         const group = groups[exp];
-
-        // Sort strikes ASC
         group.sort((a, b) => a.strike - b.strike);
 
         const wrapper = document.createElement("div");
         wrapper.style.marginBottom = "12px";
 
-        let forward =
+        const forward =
             data.forwardByExpiry && data.forwardByExpiry[exp] != null
                 ? Number(data.forwardByExpiry[exp])
                 : null;
 
-        // ========= COLLAPSIBLE HEADER — OLD STYLE [+]/[-] =========
-        const collapsed = true; // default collapsed
         const tableId = `table_${exp.replace(/[^A-Za-z0-9]/g, "_")}`;
 
         wrapper.innerHTML = `
@@ -214,29 +209,30 @@ function buildOptionChainTables(data) {
                 <b>Expiry:</b> ${exp}
                 <b style="margin-left:10px;">Forward:</b>
                 <span id="expFwd_${exp}">
-                    ${forward != null ? Number(forward).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+                    ${forward != null ? forward.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
                 </span>
-                <span id="toggle_${tableId}" 
-                      style="margin-left:10px; font-weight:bold;">[+]</span>
+                <span id="toggle_${tableId}" style="margin-left:10px; font-weight:bold;">[+]</span>
             </div>
             <div id="${tableId}" style="display:none;"></div>
         `;
 
         const tableContainer = wrapper.querySelector(`#${tableId}`);
 
-        // === Build table ===
         let html = `
             <table>
                 <tr>
-                    <th colspan="9">CALLS</th>
+                    <th colspan="12">CALLS</th>
                     <th rowspan="2">Strike<br/>(% Fwd)</th>
-                    <th colspan="9">PUTS</th>
+                    <th colspan="12">PUTS</th>
                 </tr>
                 <tr>
-                    <th>Gamma</th><th>Delta</th><th>OI</th><th>Bid</th><th>BidSprd</th>
+                    <th>Rho</th><th>Theta</th><th>Vega</th><th>Gamma</th><th>Delta</th>
+                    <th>OI</th><th>Bid</th><th>BidSprd</th>
                     <th>NPV</th><th>AskSprd</th><th>Ask</th><th>IV</th>
-                    <th>IV</th><th>Bid</th><th>BidSprd</th><th>NPV</th>
-                    <th>AskSprd</th><th>Ask</th><th>OI</th><th>Delta</th><th>Gamma</th>
+
+                    <th>IV</th><th>Bid</th><th>BidSprd</th>
+                    <th>NPV</th><th>AskSprd</th><th>Ask</th><th>OI</th>
+                    <th>Delta</th><th>Gamma</th><th>Vega</th><th>Theta</th><th>Rho</th>
                 </tr>
         `;
 
@@ -247,6 +243,9 @@ function buildOptionChainTables(data) {
 
             html += `
                 <tr id="row_${c}">
+                    <td id="${c}_rho"></td>
+                    <td id="${c}_theta"></td>
+                    <td id="${c}_vega"></td>
                     <td id="${c}_gamma"></td>
                     <td id="${c}_delta"></td>
                     <td id="${c}_oi"></td>
@@ -257,7 +256,7 @@ function buildOptionChainTables(data) {
                     <td id="${c}_ask"></td>
                     <td id="${c}_ivused"></td>
 
-                    <td id="${c}_strike" class="strike">${strikeDisplay}</td>
+                    <td class="strike">${strikeDisplay}</td>
 
                     <td id="${p}_ivused"></td>
                     <td id="${p}_bid"></td>
@@ -268,33 +267,26 @@ function buildOptionChainTables(data) {
                     <td id="${p}_oi"></td>
                     <td id="${p}_delta"></td>
                     <td id="${p}_gamma"></td>
+                    <td id="${p}_vega"></td>
+                    <td id="${p}_theta"></td>
+                    <td id="${p}_rho"></td>
                 </tr>
             `;
         }
 
         html += "</table>";
-
         tableContainer.innerHTML = html;
         optionDiv.appendChild(wrapper);
 
-        // --- Apply shading ---
         for (const pair of group) {
             const rowElem = document.getElementById(`row_${pair.c_token}`);
             if (rowElem) {
-                applyShadingForRow(
-                    rowElem,
-                    Number(pair.strike),
-                    forward,
-                    pair.c_token,
-                    pair.p_token
-                );
+                applyShadingForRow(rowElem, Number(pair.strike), forward, pair.c_token, pair.p_token);
             }
         }
 
-        // ========= RESTORED SMALL TOGGLE LOGIC =========
         const header = wrapper.querySelector(".expiry-header");
         const toggle = wrapper.querySelector(`#toggle_${tableId}`);
-
         header.addEventListener("click", () => {
             const hidden = tableContainer.style.display === "none";
             tableContainer.style.display = hidden ? "block" : "none";
@@ -356,6 +348,9 @@ function updateMarketSnapshot(data) {
             }
 
             // === Update CALL side ===
+            updateCell(`${cToken}_vega`, pair.c_vega ?? 0, 4);
+            updateCell(`${cToken}_theta`, pair.c_theta ?? 0, 4);
+            updateCell(`${cToken}_rho`, pair.c_rho ?? 0, 4);
             updateCell(`${cToken}_gamma`, pair.c_gamma ?? 0, 4);
             updateCell(`${cToken}_delta`, pair.c_delta ?? 0, 4);
             updateCell(`${cToken}_oi`, pair.c_oi ?? 0, 0, "", true);
@@ -380,6 +375,9 @@ function updateMarketSnapshot(data) {
             updateCell(`${pToken}_oi`, pair.p_oi ?? 0, 0, "", true);
             updateCell(`${pToken}_delta`, pair.p_delta ?? 0, 4);
             updateCell(`${pToken}_gamma`, pair.p_gamma ?? 0, 4);
+            updateCell(`${pToken}_vega`, pair.p_vega ?? 0, 4);
+            updateCell(`${pToken}_theta`, pair.p_theta ?? 0, 4);
+            updateCell(`${pToken}_rho`, pair.p_rho ?? 0, 4);
 
             // === Apply shading ===
             const rowElem = document.getElementById(`row_${cToken}`);

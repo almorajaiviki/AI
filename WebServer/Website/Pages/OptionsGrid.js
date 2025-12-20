@@ -82,7 +82,6 @@ function showFilterDropdown(inputElem, items) {
     filterDropdown.style.display = "block";
 }
 
-
 // === INITIALIZATION ===
 window.addEventListener("load", onPageLoad);
 
