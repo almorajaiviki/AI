@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using RiskGen;
+using WebSocketServer;
 
 namespace Server
 {
@@ -76,12 +77,15 @@ namespace Server
 
                     var snapshotDto = _marketData.AtomicSnapshot.ToDTO();
                     //string json = System.Text.Json.JsonSerializer.Serialize(snapshotDto);
-                    string json = System.Text.Json.JsonSerializer.Serialize(snapshotDto, new System.Text.Json.JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
-                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                    });
+                    string json = System.Text.Json.JsonSerializer.Serialize(snapshotDto,
+                    WebsocketServer._fastJsonOptions 
+                    // new System.Text.Json.JsonSerializerOptions
+                    // {
+                    //     PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                    //     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
+                    //     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    // }
+                    );
                     msg = Encoding.UTF8.GetBytes(json);
                 }
                 else
@@ -152,12 +156,14 @@ namespace Server
 
                         string json = System.Text.Json.JsonSerializer.Serialize(
                             dto,
-                            new System.Text.Json.JsonSerializerOptions
-                            {
-                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
-                                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                            });
+                            WebsocketServer._semanticJsonOptions
+                            // new System.Text.Json.JsonSerializerOptions
+                            // {
+                            //     PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                            //     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
+                            //     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                            // }
+                            );
 
                         msg = Encoding.UTF8.GetBytes(json);
                     }                
@@ -335,12 +341,14 @@ namespace Server
 
                             string json = System.Text.Json.JsonSerializer.Serialize(
                                 dto,
-                                new System.Text.Json.JsonSerializerOptions
-                                {
-                                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
-                                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                                });
+                                WebsocketServer._semanticJsonOptions
+                                // new System.Text.Json.JsonSerializerOptions
+                                // {
+                                //     PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                                //     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
+                                //     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                                // }
+                                );
 
                             msg = Encoding.UTF8.GetBytes(json);
 
@@ -385,9 +393,19 @@ namespace Server
                                             ));
                                         }
 
+                                        var scenarioValues = scenario.BumpResults
+                                            .Select(kvp => new ScenarioValuePointDto(
+                                                TimeShiftYears:  kvp.Key.TimeShiftYears,
+                                                ForwardShiftPct: kvp.Key.ForwardShiftPct,
+                                                VolShiftAbs:     kvp.Key.VolShiftAbs,
+                                                TotalNPV:        kvp.Value
+                                            ))
+                                            .ToList();
+
                                         scenarioDtos.Add(new ScenarioDto(
                                             ScenarioName: scenarioName,
-                                            Trades: tradeDtos
+                                            Trades: tradeDtos,
+                                            ScenarioValues: scenarioValues
                                         ));
                                     }
 
@@ -397,12 +415,14 @@ namespace Server
 
                                     string json = System.Text.Json.JsonSerializer.Serialize(
                                         dto,
-                                        new System.Text.Json.JsonSerializerOptions
-                                        {
-                                            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                                            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
-                                            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                                        });
+                                        //new System.Text.Json.JsonSerializerOptions
+                                        // {
+                                        //     PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                                        //     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
+                                        //     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                                        // }
+                                        WebsocketServer._semanticJsonOptions
+                                        );
 
                                     msg = Encoding.UTF8.GetBytes(json);                                    
                                 }

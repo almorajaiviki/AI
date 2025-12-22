@@ -587,9 +587,19 @@ namespace Server
                     ));
                 }
 
+                var scenarioValues = scenario.BumpResults
+                    .Select(kvp => new ScenarioValuePointDto(
+                        TimeShiftYears:  kvp.Key.TimeShiftYears,
+                        ForwardShiftPct: kvp.Key.ForwardShiftPct,
+                        VolShiftAbs:     kvp.Key.VolShiftAbs,
+                        TotalNPV:        kvp.Value
+                    ))
+                    .ToList();
+
                 scenarioDtos.Add(new ScenarioDto(
                     ScenarioName: scenarioName,
-                    Trades: tradeDtos
+                    Trades: tradeDtos,
+                    ScenarioValues: scenarioValues
                 ));
             }
 

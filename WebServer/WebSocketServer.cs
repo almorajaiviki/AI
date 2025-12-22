@@ -15,10 +15,18 @@ namespace WebSocketServer
         private static readonly object _lock = new();
         private static WebsocketServer? _instance;
         // === Add this near the top of the class ===
-        private static readonly JsonSerializerOptions _fastJsonOptions = new()
+        internal static readonly JsonSerializerOptions _fastJsonOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+            WriteIndented = false,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        internal static readonly JsonSerializerOptions _semanticJsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.Never, // 🔑
             WriteIndented = false,
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
@@ -143,7 +151,7 @@ namespace WebSocketServer
                     Type: type,
                     Data: data
                 );
-                string json = JsonSerializer.Serialize(wsMsg, _fastJsonOptions);
+                string json = JsonSerializer.Serialize(wsMsg, _semanticJsonOptions);
                 if (!_broadcastChannel.Writer.TryWrite(json))
                 {
                     Console.WriteLine("[WebSocketServer] Broadcast queue full, dropping message");

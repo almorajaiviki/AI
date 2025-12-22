@@ -121,6 +121,41 @@ namespace RiskGen
             );
         }
 
+        public TradeNPV CalcNPV(
+            double tte,
+            double forward,
+            double rfr,
+            IParametricModelSurface volSurface,
+            IGreeksCalculator? greeksCalculator = null)
+        {
+            greeksCalculator ??= Black76GreeksCalculator.Instance;
+
+            var productType = Instrument.ProductType;
+
+            bool isCall = productType == ProductType.Option
+                ? (Instrument.OptionType == InstrumentStatic.OptionType.CE)
+                : true;
+
+            double strike = productType == ProductType.Option
+                ? Instrument.Strike
+                : double.NaN;
+
+            double npvPerUnit = greeksCalculator.NPV(
+                productType,
+                isCall,
+                forward,
+                strike,
+                rfr,
+                tte,
+                volSurface);
+
+            double scale = Lots * Instrument.LotSize;
+
+            return new TradeNPV(
+                NPV: npvPerUnit * scale
+            );
+        }
+
         static double GetVolRisk(
             IEnumerable<(string ParamName, double Amount)> volRisk,
             VolatilityParam param)
