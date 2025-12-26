@@ -21,7 +21,8 @@ namespace MarketData
             double riskFreeRate,
             double timeToExpiry,
             IParametricModelSurface volSurface,
-            IGreeksCalculator greeksCalculator)
+            IGreeksCalculator greeksCalculator,
+            double timeBump)
         {
             Token = optionSnapshot.Token;
 
@@ -56,9 +57,10 @@ namespace MarketData
                 productType, isCall, impliedFuture, strike,
                 riskFreeRate, timeToExpiry, volSurface);
 
+            
             Theta = greeksCalculator.Theta(
                 productType, isCall, impliedFuture, strike,
-                riskFreeRate, timeToExpiry, volSurface);
+                riskFreeRate, timeToExpiry, volSurface, timeBump);
         }
     }
 

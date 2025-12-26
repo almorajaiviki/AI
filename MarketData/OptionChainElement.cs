@@ -52,10 +52,12 @@ namespace MarketData
             double timeToExpiry = index.Calendar.GetYearFraction(now, callOption.Expiry);
 
             double forwardPrice = forwardCurve.GetForwardPrice(timeToExpiry);
-
+            DateTime nextBizDate = index.Calendar.GetNextBusinessDate(now);
+            double timeBump = -index.Calendar.GetYearFraction(now, nextBizDate);
+            
             // Greeks
-            _callGreeks = new OptionGreeks(callOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
-            _putGreeks = new OptionGreeks(putOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+            _callGreeks = new OptionGreeks(callOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator, timeBump);
+            _putGreeks = new OptionGreeks(putOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator, timeBump);
 
             // Spreads
             _callSpreads = new OptionSpreads(callOption.GetSnapshot(), _callGreeks);
@@ -73,10 +75,12 @@ namespace MarketData
                 var indexSnapshot = index.GetSnapshot();
                 double timeToExpiry = index.Calendar.GetYearFraction(now, _callOption.Expiry);
                 double forwardPrice = forwardCurve.GetForwardPrice(timeToExpiry);
+                DateTime nextBizDate = index.Calendar.GetNextBusinessDate(now);
+                double timeBump = -index.Calendar.GetYearFraction(now, nextBizDate);
 
                 // Update Greeks
-                _callGreeks = new OptionGreeks(_callOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
-                _putGreeks = new OptionGreeks(_putOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator);
+                _callGreeks = new OptionGreeks(_callOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator, timeBump);
+                _putGreeks = new OptionGreeks(_putOption.GetSnapshot(), forwardPrice, rfr.Value, timeToExpiry, volSurface, _greeksCalculator, timeBump);
 
                 // Update Spreads
                 _callSpreads = new OptionSpreads(_callOption.GetSnapshot(), _callGreeks);

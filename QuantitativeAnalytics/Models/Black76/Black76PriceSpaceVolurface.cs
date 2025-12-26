@@ -742,47 +742,9 @@ namespace QuantitativeAnalytics
         /// <summary>
         /// GetVol(t, m) using total variance interpolation, identical structure to Black76VolSurface.
         /// </summary>
-        public double GetVol(double timeToExpiry, double moneyness)
+        public double GetVol(double timeToExpiry, double logMoneyness)
         {
-            /* if (_skews.Count == 0)
-                throw new InvalidOperationException("Vol surface has no skews.");
-
-            var first = _skews[0];
-            var last  = _skews[^1];
-
-            if (timeToExpiry <= first.TimeToExpiry)
-                return first.GetVol(moneyness);
-
-            if (timeToExpiry >= last.TimeToExpiry)
-                return last.GetVol(moneyness);
-
-            // Find bracketing skews
-            for (int i = 0; i < _skews.Count - 1; i++)
-            {
-                var lower = _skews[i];
-                var upper = _skews[i + 1];
-
-                if (lower.TimeToExpiry <= timeToExpiry && timeToExpiry <= upper.TimeToExpiry)
-                {
-                    double tL = lower.TimeToExpiry;
-                    double tU = upper.TimeToExpiry;
-
-                    double vL = lower.GetVol(moneyness);
-                    double vU = upper.GetVol(moneyness);
-
-                    double wL = vL * vL * tL;  // total variance
-                    double wU = vU * vU * tU;
-
-                    double α = (timeToExpiry - tL) / (tU - tL);
-                    double wMid = (1 - α) * wL + α * wU;
-
-                    return Math.Sqrt(wMid / timeToExpiry);
-                }
-            }
-
-            return last.GetVol(moneyness); */
-
-            return GetVolEnforcingMonotoneTotalVariance(timeToExpiry, moneyness);
+            return GetVolEnforcingMonotoneTotalVariance(timeToExpiry, logMoneyness);
         }
 
         /// <summary>

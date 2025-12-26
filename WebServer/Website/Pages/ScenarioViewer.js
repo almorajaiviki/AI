@@ -5,6 +5,28 @@ let scenarioValuesDom = new Map();
 // key = scenarioName -> valuesBody div
 let scenarioTotalDom = new Map();
 // key = scenarioName -> { npv, delta, gamma, vega, vanna, volga, correl, theta, rho }
+// key = scenarioName|metric|tradingSymbol -> td
+let scenarioPnLAttrDom = new Map();
+
+const PNL_ATTR_ROWS = [
+    ["actualPnL", "Actual PnL"],
+    ["thetaPnL", "Theta PnL"],
+    ["rfrPnL", "Rates (RFR) PnL"],
+
+    ["deltaPnL", "Delta PnL"],
+    ["gammaPnL", "Gamma PnL"],
+
+    ["vegaPnL", "Vega PnL"],
+    ["volgaPnL", "Volga PnL"],
+    ["vannaPnL", "Vanna PnL"],
+
+    ["fwdResidualPnL", "Fwd Residual"],
+    ["volResidualPnL", "Vol Residual"],
+    ["crossResidualPnL", "Cross Residual"],
+
+    ["explainedPnL", "Explained PnL"],
+    ["unexplainedPnL", "Unexplained PnL"]
+];
 
 window.addEventListener("load", onPageLoad);
 
@@ -48,6 +70,18 @@ function injectStyles() {
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 6px;
+        }
+        
+        .scenario-grid-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 14px;
+            align-items: flex-start;
+        }
+
+        .scenario-grid {
+            flex: 1;
+            min-width: 420px;
         }
 
         table {
@@ -238,10 +272,36 @@ function renderScenarioViewer(data) {
         scenarioValuesDom.set(scenario.scenarioName, valuesBody);
 
         if (scenario.scenarioValues?.length) {
-            const grouped = groupScenarioValues(scenario.scenarioValues);
-            grouped.forEach((fwdMap, timeShift) => {
-                renderScenarioGrid(valuesBody, timeShift, fwdMap);
+            const groupedNPV = groupScenarioValues(scenario.scenarioValues);
+            const groupedPNL = groupScenarioPnL(scenario.scenarioValues);
+
+            // ---------- ROW 1: NPV ----------
+            const npvRow = document.createElement("div");
+            npvRow.className = "scenario-grid-row";
+
+            groupedNPV.forEach((fwdMap, timeShift) => {
+                const box = document.createElement("div");
+                box.className = "scenario-grid";
+
+                renderScenarioGrid(box, timeShift, fwdMap, "NPV");
+                npvRow.appendChild(box);
             });
+
+            valuesBody.appendChild(npvRow);
+
+            // ---------- ROW 2: PnL ----------
+            const pnlRow = document.createElement("div");
+            pnlRow.className = "scenario-grid-row";
+
+            groupedPNL.forEach((fwdMap, timeShift) => {
+                const box = document.createElement("div");
+                box.className = "scenario-grid";
+
+                renderScenarioGrid(box, timeShift, fwdMap, "PNL");
+                pnlRow.appendChild(box);
+            });
+
+            valuesBody.appendChild(pnlRow);
         }
 
         valuesBody.style.display = "none";
@@ -258,6 +318,65 @@ function renderScenarioViewer(data) {
         valuesWrapper.appendChild(valuesHeader);
         valuesWrapper.appendChild(valuesBody);
         scenarioBody.appendChild(valuesWrapper);
+
+        // ---------- PnL Attribution (VERTICAL, collapsible) ----------
+        if (scenario.tradePnL && scenario.tradePnL.length > 0) {
+
+            const pnlHeader = document.createElement("div");
+            pnlHeader.textContent = "▶ PnL Attribution";
+            pnlHeader.style.cursor = "pointer";
+            pnlHeader.style.fontWeight = "bold";
+            pnlHeader.style.marginTop = "10px";
+
+            const pnlBody = document.createElement("div");
+            pnlBody.style.display = "none";
+            pnlBody.style.marginTop = "6px";
+
+            pnlHeader.onclick = () => {
+                const open = pnlBody.style.display === "none";
+                pnlBody.style.display = open ? "block" : "none";
+                pnlHeader.textContent = open
+                    ? "▼ PnL Attribution"
+                    : "▶ PnL Attribution";
+            };
+
+            const table = document.createElement("table");
+
+            // ---- Header row (symbols across) ----
+            let html = "<tr><th>Metric</th>";
+            scenario.tradePnL.forEach(p => {
+                html += `<th>${p.tradingSymbol}</th>`;
+            });
+            html += "</tr>";
+
+            // ---- One row per PnL component ----
+            PNL_ATTR_ROWS.forEach(([field, label]) => {
+                html += `<tr><th>${label}</th>`;
+
+                scenario.tradePnL.forEach(p => {
+                    const key = `${scenario.scenarioName}|${field}|${p.tradingSymbol}`;
+                    html += `<td data-key="${key}"></td>`;
+                });
+
+                html += "</tr>";
+            });
+
+            table.innerHTML = html;
+            pnlBody.appendChild(table);
+
+            scenarioBody.appendChild(pnlHeader);
+            scenarioBody.appendChild(pnlBody);
+
+            // ---- Index the cells for live updates ----
+            table.querySelectorAll("td[data-key]").forEach(td => {
+                scenarioPnLAttrDom.set(td.dataset.key, td);
+            });
+
+            // ---- Initial fill ----
+            scenario.tradePnL.forEach(pnl =>
+                updatePnLAttributionCells(scenario.scenarioName, pnl)
+            );
+        }
 
         // ---------- Final assembly ----------
         block.appendChild(scenarioBody);
@@ -289,6 +408,16 @@ function updateTradeCells(scenarioName, tradingSymbol, trade) {
 
     setCellValue(dom.theta,  trade.theta);
     setCellValue(dom.rho,    trade.rho);
+}
+
+function updatePnLAttributionCells(scenarioName, pnl) {
+    PNL_ATTR_ROWS.forEach(([field]) => {
+        const key = `${scenarioName}|${field}|${pnl.tradingSymbol}`;
+        const cell = scenarioPnLAttrDom.get(key);
+        if (!cell) return;
+
+        setCellValue(cell, pnl[field]);
+    });
 }
 
 function connectScenarioWebSocket() {
@@ -337,19 +466,55 @@ function applyScenarioUpdate(snapshot) {
         });
         updateScenarioTotals(scenario);
 
+        // 1️⃣b Update PnL Attribution
+        if (scenario.tradePnL) {
+            scenario.tradePnL.forEach(pnl => {
+                updatePnLAttributionCells(
+                    scenario.scenarioName,
+                    pnl
+                );
+            });
+        }
+
         // 2️⃣ Update scenario value grids
         const valuesBody = scenarioValuesDom.get(scenario.scenarioName);
         if (!valuesBody) return;
 
         // clear old grids
+        // clear old grids
         valuesBody.innerHTML = "";
 
-        if (scenario.scenarioValues && scenario.scenarioValues.length > 0) {
-            const grouped = groupScenarioValues(scenario.scenarioValues);
+        if (scenario.scenarioValues?.length) {
+            const groupedNPV = groupScenarioValues(scenario.scenarioValues);
+            const groupedPNL = groupScenarioPnL(scenario.scenarioValues);
 
-            grouped.forEach((fwdMap, timeShift) => {
-                renderScenarioGrid(valuesBody, timeShift, fwdMap);
+            // ---------- ROW 1: NPV ----------
+            const npvRow = document.createElement("div");
+            npvRow.className = "scenario-grid-row";
+
+            groupedNPV.forEach((fwdMap, timeShift) => {
+                const box = document.createElement("div");
+                box.className = "scenario-grid";
+
+                renderScenarioGrid(box, timeShift, fwdMap, "NPV");
+                npvRow.appendChild(box);
             });
+
+            valuesBody.appendChild(npvRow);
+
+            // ---------- ROW 2: PnL ----------
+            const pnlRow = document.createElement("div");
+            pnlRow.className = "scenario-grid-row";
+
+            groupedPNL.forEach((fwdMap, timeShift) => {
+                const box = document.createElement("div");
+                box.className = "scenario-grid";
+
+                renderScenarioGrid(box, timeShift, fwdMap, "PNL");
+                pnlRow.appendChild(box);
+            });
+
+            valuesBody.appendChild(pnlRow);
         }
     });
 }
@@ -379,8 +544,29 @@ function groupScenarioValues(values) {
     return map;
 }
 
+function groupScenarioPnL(values) {
+    const baseNPV = getBaseNPV(values);
+    const map = new Map();
+
+    values.forEach(v => {
+        const t   = norm(v.timeShiftYears);
+        const f   = norm(v.forwardShiftPct);
+        const vol = norm(v.volShiftAbs);
+
+        if (!map.has(t)) map.set(t, new Map());
+        const fwdMap = map.get(t);
+
+        if (!fwdMap.has(f)) fwdMap.set(f, new Map());
+
+        const pnl = Number(v.totalNPV) - baseNPV;
+        fwdMap.get(f).set(vol, pnl);
+    });
+
+    return map;
+}
+
 //helper function to render one scenario grid
-function renderScenarioGrid(container, timeShift, fwdMap) {
+function renderScenarioGrid(container, timeShift, fwdMap, mode) {
     const fwdShifts = Array.from(fwdMap.keys())
         .map(norm)
         .sort((a,b)=>a-b);
@@ -392,9 +578,9 @@ function renderScenarioGrid(container, timeShift, fwdMap) {
     const volShifts = Array.from(volSet).sort((a,b)=>a-b);
 
     const title = document.createElement("div");
-    title.textContent = `Time Shift: ${timeShift}`;
+    title.textContent = `${mode} — Time Shift: ${timeShift}`;
     title.style.fontWeight = "bold";
-    title.style.margin = "8px 0";
+    title.style.margin = "6px 0";
     container.appendChild(title);
 
     const table = document.createElement("table");
@@ -502,4 +688,18 @@ function updateScenarioTotals(scenario) {
 
     setCellValue(dom.theta,  totals.theta);
     setCellValue(dom.rho,    totals.rho);
+}
+
+function getBaseNPV(values) {
+    // find (0,0,0)
+    for (const v of values) {
+        if (
+            norm(v.timeShiftYears) === 0 &&
+            norm(v.forwardShiftPct) === 0 &&
+            norm(v.volShiftAbs) === 0
+        ) {
+            return Number(v.totalNPV) || 0;
+        }
+    }
+    return 0; // fallback (should not happen)
 }

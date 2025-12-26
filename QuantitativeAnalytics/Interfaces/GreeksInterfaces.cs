@@ -52,7 +52,8 @@ namespace QuantitativeAnalytics
             double strike,
             double rate,
             double tte,
-            IParametricModelSurface surface);
+            IParametricModelSurface surface,
+            double tteBump = -1.0 / 365.0);
 
         double Rho(
             ProductType productType,

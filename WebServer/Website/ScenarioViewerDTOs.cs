@@ -4,11 +4,12 @@ namespace Server
         IReadOnlyList<ScenarioDto> Scenarios
     );
 
-        public sealed record ScenarioDto(
-            string ScenarioName,
-            IReadOnlyList<ScenarioTradeDto> Trades,
-            IReadOnlyList<ScenarioValuePointDto> ScenarioValues
-        );
+    public sealed record ScenarioDto(
+        string ScenarioName,
+        IReadOnlyList<ScenarioTradeDto> Trades,
+        IReadOnlyList<ScenarioTradePnLDto> TradePnL,
+        IReadOnlyList<ScenarioValuePointDto> ScenarioValues
+    );
 
     public sealed record ScenarioTradeDto(
         string TradingSymbol,
@@ -39,6 +40,31 @@ namespace Server
         double TimeShiftYears,
         double ForwardShiftPct,
         double VolShiftAbs,
-        double TotalNPV
+        double TotalNPV,
+        double TotalPnL
+    );
+
+    public sealed record ScenarioTradePnLDto
+    (
+        string TradingSymbol,
+
+        double ActualPnL,
+
+        double ThetaPnL,
+        double RfrPnL,
+
+        double DeltaPnL,
+        double GammaPnL,
+
+        double VegaPnL,
+        double VolgaPnL,
+        double VannaPnL,
+
+        double FwdResidualPnL,
+        double VolResidualPnL,
+        double CrossResidualPnL,
+
+        double ExplainedPnL,
+        double UnexplainedPnL
     );
 }

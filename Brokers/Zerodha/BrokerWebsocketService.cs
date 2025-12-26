@@ -78,6 +78,10 @@ namespace Zerodha
                     if (!_processFeedMessages)
                         continue;
 
+                    // ⛔ Hard stop outside market hours
+                    if (!IsMarketHours(DateTime.Now))
+                        continue;
+
                     if (result.MessageType != WebSocketMessageType.Binary)
                     {
                         Console.WriteLine($"[ZerodhaWS] Ignoring non-binary message {result}");
@@ -165,6 +169,12 @@ namespace Zerodha
             return updates;
         }
 
+        private bool IsMarketHours(DateTime now)
+        {
+            var t = now.TimeOfDay;
+            return t >= new TimeSpan(9, 0, 0)
+                && t <= new TimeSpan(15, 30, 0);
+        }
         public void Dispose()
         {
             try

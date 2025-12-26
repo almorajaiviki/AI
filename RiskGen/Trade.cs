@@ -1,5 +1,6 @@
 using MarketData;
 using QuantitativeAnalytics;
+using CalendarLib;
 
 namespace RiskGen
 {
@@ -97,9 +98,21 @@ namespace RiskGen
             double volgaPerUnit  = GetVolRisk(volRisk, VolatilityParam.Volga);
             double correlPerUnit = GetVolRisk(volRisk, VolatilityParam.Correl);
 
+            // -------------------------------
+            // Time bumps
+            // -------------------------------
+            var calendar = snap.Calendar;
+
+            DateTime t0 = snap.InitializationTime;
+            // Next business day according to CalendarLib
+            DateTime t1 = calendar.AddBusinessDays(t0, 1);
+
+            // Year fraction difference
+            double dt1 = calendar.GetYearFraction(t0, t1);
+
             double thetaPerUnit = greeksCalculator.Theta(
                 productType, isCall, forward, strike,
-                rfr, tte, volSurface);
+                rfr, tte, volSurface, -dt1);
 
             double rhoPerUnit = greeksCalculator.Rho(
                 productType, isCall, forward, strike,

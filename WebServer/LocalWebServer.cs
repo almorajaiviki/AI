@@ -393,18 +393,53 @@ namespace Server
                                             ));
                                         }
 
+                                        var bumpPnL = scenario.BumpPnL;
+
                                         var scenarioValues = scenario.BumpResults
                                             .Select(kvp => new ScenarioValuePointDto(
                                                 TimeShiftYears:  kvp.Key.TimeShiftYears,
                                                 ForwardShiftPct: kvp.Key.ForwardShiftPct,
                                                 VolShiftAbs:     kvp.Key.VolShiftAbs,
-                                                TotalNPV:        kvp.Value
+                                                TotalNPV:        kvp.Value,
+                                                TotalPnL:        bumpPnL.TryGetValue(kvp.Key, out var pnl) ? pnl : 0.0
                                             ))
                                             .ToList();
+                                        
+                                        var tradePnLDtos = new List<ScenarioTradePnLDto>();
+
+                                        foreach (var trade in scenario.Trades)
+                                        {
+                                            if (!scenario.TradePnL.TryGetValue(trade, out var pnl))
+                                                continue;
+
+                                            tradePnLDtos.Add(new ScenarioTradePnLDto(
+                                                TradingSymbol: trade.Instrument.TradingSymbol,
+
+                                                ActualPnL: pnl.ActualPnL,
+
+                                                ThetaPnL: pnl.ThetaPnL,
+                                                RfrPnL: pnl.dRfrPnL,
+
+                                                DeltaPnL: pnl.DeltaPnL,
+                                                GammaPnL: pnl.GammaPnL,
+
+                                                VegaPnL: pnl.VegaPnL,
+                                                VolgaPnL: pnl.VolgaPnL,
+                                                VannaPnL: pnl.VannaPnL,
+
+                                                FwdResidualPnL: pnl.FwdRevalResidualPnL,
+                                                VolResidualPnL: pnl.VolRevalResidualPnL,
+                                                CrossResidualPnL: pnl.crossResidualPnL,
+
+                                                ExplainedPnL: pnl.TotalExplainedPnL,
+                                                UnexplainedPnL: pnl.TotalUnexplainedPnL
+                                            ));
+                                        }
 
                                         scenarioDtos.Add(new ScenarioDto(
                                             ScenarioName: scenarioName,
                                             Trades: tradeDtos,
+                                            TradePnL: tradePnLDtos,
                                             ScenarioValues: scenarioValues
                                         ));
                                     }

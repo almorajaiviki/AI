@@ -85,7 +85,6 @@ namespace RiskGen
             }
         }
 
-        
         public void Dispose() => Shutdown();
 
         // -----------------------------------------------------------
@@ -196,7 +195,7 @@ namespace RiskGen
                     // Recalculate all scenarios
                     foreach (var scenario in _scenarios.Values)
                     {
-                        scenario.CalculateGreeks(snap);
+                        scenario.CalculateGreeksAndPnL(snap);
                     }
 
                     // raise OnScenariosUpdated event here

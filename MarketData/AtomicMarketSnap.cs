@@ -354,7 +354,10 @@ namespace MarketData
                         );
 
                     double tte = _calendar.GetYearFraction(_initializationTime, pair.expiry);
-                    var callGreeks = new OptionGreeks(callSnap, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator);                     
+                    DateTime nextBizDate = _calendar.GetNextBusinessDate(_initializationTime);
+                    double timeBump = -_calendar.GetYearFraction(_initializationTime, nextBizDate);
+                    
+                    var callGreeks = new OptionGreeks(callSnap, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator, timeBump);                     
                     
                     // Put snapshot + greeks
                     var putSnap = new OptionSnapshot(
@@ -367,7 +370,7 @@ namespace MarketData
                         bid: pair.P_bid,
                         ask: pair.P_ask,
                         oi: pair.P_oi, 1);
-                    var putGreeks = new OptionGreeks(putSnap, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator);
+                    var putGreeks = new OptionGreeks(putSnap, _forwardCurve!.GetForwardPrice(tte), _riskFreeRate, tte, _volSurface, _greeksCalculator, timeBump);
 
                     optionSnapshots.Add(callSnap);
                     optionSnapshots.Add(putSnap);

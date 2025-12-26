@@ -110,10 +110,10 @@ namespace QuantitativeAnalytics
                 yield return (VolatilityParam.Correl.ToString(), 0.0);
             }
         }
-        internal static double Theta(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface)
+        internal static double Theta(ProductType productType, bool isCall, double forwardPrice, double strike, double riskFreeRate, double timeToExpiry, IParametricModelSurface? volSurface, double tteBump = -1.0 / 365.0)
         {
             double npvAt = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, timeToExpiry, volSurface);
-            double bumpedTimeToExpiry = Math.Max(0, timeToExpiry - (1.0 / 365.0));
+            double bumpedTimeToExpiry = Math.Max(0, timeToExpiry + tteBump);
             double npvBumped = NPV(productType, isCall, forwardPrice, strike, riskFreeRate, bumpedTimeToExpiry, volSurface);
             return (npvBumped - npvAt);
         }
@@ -212,8 +212,8 @@ namespace QuantitativeAnalytics
         public IEnumerable<(string ParamName, double Amount)> VolRiskByParam(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface surface, IEnumerable<(string parameterName, double bumpAmount)>? bumps = null)
             => Black76Greeks.VolRiskByParam(productType, isCall, forward, strike, rate, tte, surface);
 
-        public double Theta(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
-            => Black76Greeks.Theta(productType, isCall, forward, strike, rate, tte, surface);
+        public double Theta(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface, double tteBump = -1.0 / 365.0)
+            => Black76Greeks.Theta(productType, isCall, forward, strike, rate, tte, surface, tteBump);
 
         public double Rho(ProductType productType, bool isCall, double forward, double strike, double rate, double tte, IParametricModelSurface? surface)
             => Black76Greeks.Rho(productType, isCall, forward, strike, rate, tte, surface);
