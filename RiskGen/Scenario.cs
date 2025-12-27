@@ -376,7 +376,6 @@ namespace RiskGen
 
                 pnl[trade] = new PnLAttributes(dF_pct, actualPnL, thetaPnL, dRfrPnL, deltaPnL, gammaPnL, vegaPnL, volgaPnL, vannaPnL, fwdRevalResidualPnL, volRevalResidualPnL, crossResidualPnL, totalExplainedPnL, totalUnexplainedPnL);
             }
-
             lock (_lock)
             {
                 _tradePnL = pnl;
